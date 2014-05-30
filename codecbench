@@ -1,0 +1,11 @@
+#!/usr/bin/python
+import json
+import os
+
+for root,dirs,files in os.walk("."):
+    for f in files:
+        if(f=="codec-definition.json"):
+            print root
+            print dirs
+            print files
+
