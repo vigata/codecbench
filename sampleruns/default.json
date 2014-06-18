@@ -4,7 +4,7 @@
   "keeprecon" : false,
   "runs" : [
   {
-    "seq" : ["foremancif","coastguardcif","parkrun"],
+    "seq" : ["foremancif"],
     "codec" : ["libvpx"],
     "bitrate" : [100,200,300,400,500,600,700,800,900,1000],
     "cpu" : 1
