@@ -1,0 +1,11 @@
+{
+    "filename": "foreman.yuv",
+    "format": "420P",
+    "frame_count": 300,
+    "framesize": 152064,
+    "height": "288",
+    "width": "352",
+    "nickname" :"foremancif",
+    "fpsnum" : 25,
+    "fpsden" : 1
+}

@@ -1,0 +1,19 @@
+{
+  "sequence_dirs": ["../seq"],
+  "codec_dirs" : ["../codecs"],
+  "keeprecon" : false,
+  "runs" : [
+  {
+    "seq" : ["foremancif","coastguardcif","parkrun"],
+    "codec" : ["libvpx"],
+    "bitrate" : [100,200,300,400,500,600,700,800,900,1000],
+    "cpu" : 1
+  },
+  {
+    "seq" : ["parkrun"],
+    "codec" : ["libvpx"],
+    "bitrate" : [1500,2000,2500,3000,4000],
+    "cpu" : 1
+  }
+  ]
+}

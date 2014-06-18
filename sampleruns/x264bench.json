@@ -1,0 +1,14 @@
+{
+  "sequence_dirs": ["../seq"],
+  "codec_dirs" : ["../codecs"],
+  "keeprecon" : false,
+  "frame_count" : 300,
+  "runs" : [
+  {
+    "seq" : ["foremancif"],
+    "codec" : ["x264"],
+    "bitrate" : [250,400,600,800,1000],
+    "preset" : ["medium","slow","placebo"]
+  }
+  ]
+}

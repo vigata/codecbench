@@ -1,0 +1,14 @@
+{
+  "sequence_dirs": ["../seq"],
+  "codec_dirs" : ["../codecs"],
+  "keeprecon" : false,
+  "frame_count" : 30,
+  "runs" : [
+  {
+    "seq" : ["foremancif"],
+    "codec" : ["libvpx"],
+    "bitrate" : [1000],
+    "cpu" : 16
+  }
+  ]
+}
