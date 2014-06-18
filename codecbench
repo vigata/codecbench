@@ -1,11 +1,300 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
+
+# @@--
+#  Copyright (C) 2014 Alberto Vigata
+#  All rights reserved
+#  
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions are met
+#  
+#      * Redistributions of source code must retain the above copyright
+#        notice, this list of conditions and the following disclaimer.
+#      * Redistributions in binary form must reproduce the above copyright
+#        notice, this list of conditions and the following disclaimer in the
+#        documentation and/or other materials provided with the distribution.
+#      * Neither the name of the University of California, Berkeley nor the
+#        names of its contributors may be used to endorse or promote products
+#        derived from this software without specific prior written permission.
+#  
+#  THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND ANY
+#  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+#  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+#  DISCLAIMED. IN NO EVENT SHALL THE REGENTS AND CONTRIBUTORS BE LIABLE FOR ANY
+#  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+#  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+#  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+#  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+#  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
+
+
 import json
 import os
+import threading
+import multiprocessing
+import platform
+from pylab import *
+from optparse import OptionParser
+import sys
 
-for root,dirs,files in os.walk("."):
-    for f in files:
-        if(f=="codec-definition.json"):
-            print root
-            print dirs
-            print files
+    
+def load_sequences(gconf):
+    seqdirs = gconf['defaults']['sequence_dirs']
+    seqdict = gconf['seqs'] = {}
+    """ does a run for codec with conf """
+    for seqdir in seqdirs:
+        for root,dirs,files in os.walk(gconf['root']+"/"+seqdir):
+            for f in files:
+                if(f.endswith(".info")):
+                    ff = os.path.abspath("{0}/{1}".format(root,f))
+                    with open(ff,'r') as jsonfile:
+                        seqdef = json.loads( jsonfile.read() )
+                        seqdef['abspath'] = os.path.abspath("{0}/{1}".format(root,seqdef['filename']))
+                        seqdef['nickname'] = seqdef.get('nickname', seqdef['filename'])
+                        seqdict[seqdef['nickname']] = seqdef
+                        print ("added sequence {abspath} [{width}x{height} {format} {frame_count}F {nickname}]".format(**seqdef))
+                        
+
+def load_codecs(gconf):
+    codecdirs = gconf['defaults']['codec_dirs']
+    codecdict = gconf['codecs'] = {}
+    
+    for codecdir in codecdirs:
+        for root,dirs,files in os.walk(gconf['root']+"/"+codecdir):
+            for f in files:
+                if(f=="codec.py"):
+                    sys.path.insert(0,os.path.abspath(root))
+                    # this will import the codec definition and the handlers
+                    from codec import codec
+                    cdef = codec.copy()
+                    codecdict[ cdef['nickname']] = cdef
+                    print ("added codec {nickname}".format(**cdef))
+                    sys.path.pop(0)     
+                    codec = None        
+                    del sys.modules['codec']      
+                    
+                    
+                    
+                    
+        
+
+def expand_runs(gconf, testconfig):      
+
+
+    gconf['runs'] = []
+
+    for rconfig in testconfig['runs']:
+        run = {}
+        run['config'] = rconfig 
+        
+        run['tools'] = {'vm': gconf['root']+'/tools/darwin/video_metrics'}
+        run['keeprecon'] = testconfig['keeprecon']
+        run['frame_count'] = testconfig['frame_count'] if 'frame_count' in testconfig else 0
+
+        expand_run(run, gconf['runs'], gconf)
+    
+    print("expanded to {0} runs".format(len(gconf['runs'])))
+                      
+def expand_run(r, runs, gconf):
+
+    #expand_keys = gconf['expand_keys']
+    expanded = 0
+    
+    run = r.copy()
+    run['config'] = run['config'].copy()
+    config = run['config']
+    #for key in expand_keys:
+    for key in config:
+        if(isinstance(config[key],list) and len(config[key])>1 ):
+            for item in config[key][:]:
+                config[key] = item
+                expand_run(run, runs, gconf)
+                expanded = 1
+            break
+                
+    if(not expanded):
+        #adapt those keys with single list items
+        for key in config:
+            if(isinstance(config[key],list) and len(config[key])==1 ):
+                config[key] = config[key][0]
+
+        #expand seq
+        if not config['seq'] in gconf['seqs'].keys():
+            print("{0} sequence is not one of the available sequences".format( config['seq']))
+            sys.exit(1)
+            
+        if not config['codec'] in gconf['codecs'].keys():
+            print("{0} codec is not one of the available codecs" .format(config['codec']))        
+            sys.exit(1)
+                
+        run['seq'] = gconf['seqs'][config['seq']]
+        run['codec'] = gconf['codecs'][config['codec']]
+        
+        #safety checks
+        for key in run['config']:
+            if not key in run['codec']['supported_pars'].keys() and key!='seq' and key !='codec':
+                print("codec {0} doesn't support parameter {1}".format(run['config']['codec'], key ))
+                sys.exit(1)
+        
+        run['frame_count'] = run['seq']['frame_count'] if run['frame_count']==0 else run['frame_count']
+                
+        runs.append(run)
+                
+        
+def do_run(run, gconf,sem, index):
+    try:
+        sem.acquire()
+        name = ""
+        for e in sorted(run['config'].keys()):
+            name += "{0}_{1}__".format(e, run['config'][e])
+        
+        print("running {0} {1}/{2}".format(name, index, len(gconf['runs'])))
+        
+        run['platform'] = gconf['platform']
+        run['config_name'] = name
+        run['base_path'] = os.path.abspath('.') + '/runs/'+name
+        runinfo_path = run['base_path'] + '/runinfo.json'
+        
+        if not os.path.exists(runinfo_path):
+            os.makedirs(run['base_path']) if not os.path.exists(run['base_path']) else None
+            
+            run['output'] = run['base_path']+'/out' 
+            run['recon'] = run['base_path']+'/recon.yuv'
+            
+            hdlr = run['codec']['handler']
+            if not callable(hdlr):
+                print("could not find handlder for codec '{1}'".format(run['codec']['nickname']))
+            else:
+                hdlr(run)
+            
+            with open(run['base_path']+'/runinfo.json','w') as rfile:
+                #json.dumps can't easily handle non trivial json values, so we remove the handler from serialization
+                runs = run.copy()
+                runs['codec']=None
+                rfile.write(json.dumps(runs,sort_keys=True, skipkeys=True, indent=4, separators=(',',': ')))
+            print("done {0}".format(name))
+        else:
+            print("using existing run at " + runinfo_path)
+            with open(runinfo_path, "r") as f:
+                run.update( json.loads(f.read()))
+                
+                
+            
+    except Exception as e:
+        raise e
+    finally:
+        sem.release()
+    
+def create_plot(seqplots,metric):
+    import matplotlib.pyplot as plt, mpld3
+    
+    for seq in seqplots:
+        fig = plt.figure()
+        for plotid in  seqplots[seq]:
+            
+            p = zip(seqplots[seq][plotid]['x'], seqplots[seq][plotid]['y'])
+            p = sorted(p, key= lambda a: a[0])
+            x,y = zip(*p)
+            plot(x,y, 'o-', label=plotid, linewidth=2)
+    
+            axis('auto')
+            legend(loc=4)
+        os.makedirs('reports') if not os.path.exists('reports') else None
+        savefig("reports/report_"+seq+"_"+metric+".png")
+    #show()
+    
+        with open("fig.html","w") as out:
+            out.write( mpld3.fig_to_html(fig) )
+    
+def runs_with_seq(runs, name):
+    """retuns list with only one specific sequence"""
+    r = []
+    for run in runs:
+        r.append(run) if run['seq']['nickname']==name else None
+    return r
+
+def report_sequences(runs):
+    seqs = {}
+    for run in runs:
+        seqs[run['config']['seq']] = True
+    return list(seqs.keys())
+
+def report_create_ratedistortion(runs, metric):
+    seqs = {}
+    #create unique plot ids for every run
+    for run in runs:
+        plotid = ''
+        for key in sorted(run['config'].keys()):
+            plotid += "{0}:{1}_".format(key, run['config'][key]) if key!='bitrate' and key!='seq' else ""
+        
+        seqname = run['config']['seq']
+        
+        # make sure dics  and lists are created
+        seqs[seqname] = {} if seqname not in seqs else seqs[seqname]
+        seqs[seqname][plotid] = {'x':[], 'y':[]} if plotid not in seqs[seqname] else seqs[seqname][plotid]
+        seqs[seqname][plotid]['x'].append(run['results']['bps'])
+        seqs[seqname][plotid]['y'].append(run['results'][metric])
+        
+        run['plotid'] = plotid
+            
+    create_plot(seqs,metric)
+    
+        
+def report_bitrate(runs):
+    """creates a bitrate graph for every sequence and all configurations for that sequence"""
+    
+    
+
+    
+
+    
+    
+def main(argv):
+    gconf = {'root': os.path.dirname( __file__ ), 'platform': platform.system().lower()+"-"+platform.machine() }
+    
+    #load global config
+    with open( gconf['root'] + "/codecbench.config","r") as f:
+        gconf['defaults'] = json.loads(f.read())
+        
+    #load sequences and codec packs
+    load_sequences(gconf)
+    load_codecs(gconf)
+    
+    parser = OptionParser()
+    parser.add_option("-i", "--input", dest="infile", default="default.json", help="the input configuration file")
+    parser.add_option("-r", "--report", dest="report", help="do reports")
+
+    (options, args) = parser.parse_args()
+
+    #load configuration file, or write one if it doesn't exist
+
+    print("loading " + os.path.abspath(options.infile))
+    with open(options.infile, 'r') as cfile:
+        testconfig = json.loads(cfile.read())
+    
+    expand_runs(gconf, testconfig)
+    sem = threading.BoundedSemaphore(value=multiprocessing.cpu_count())
+    ts = []
+    i = 0
+    for run in gconf['runs']:
+        t = threading.Thread(target=do_run,args=(run,gconf,sem,i))
+        t.start()
+        ts.append(t)
+        i+=1
+        
+
+    for t in ts:
+        t.join()
+ 
+        
+    #create bitrate reports
+    report_create_ratedistortion(gconf['runs'],'psnr')
+    report_create_ratedistortion(gconf['runs'],'ssim')
+
+
+
+if __name__ == "__main__":
+    main(sys.argv)
+
 
