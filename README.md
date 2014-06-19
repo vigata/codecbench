@@ -3,7 +3,7 @@ codecBENCH
 
 ## An open source video codec benchmarking tool ##
 
-codecBENCH is a video codec comparison tool. It allows you to analize how one video codec performs against another.
+codecBENCH is a video codec comparison tool. It allows you to analize how one video codec performs against another, or with itself using different settings
 
 You start by defining what stuff you want to analyize. For example, let's compare how x264 performs with its different presets 'medium', 'slow' and 'placebo'. For this we will create a JSON configuration file like the following:
 
