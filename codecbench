@@ -186,26 +186,40 @@ def do_run(run, gconf,sem, index):
     finally:
         sem.release()
     
-def create_plot(seqplots,metric):
+def create_plot(seqplots,metric, ref=None):
     import matplotlib.pyplot as plt, mpld3
     
     for seq in seqplots:
         fig = plt.figure()
+        bitref = []
         for plotid in  seqplots[seq]:
             
             p = zip(seqplots[seq][plotid]['x'], seqplots[seq][plotid]['y'])
             p = sorted(p, key= lambda a: a[0])
             x,y = zip(*p)
+            x = [n/1000 for n in x]
             plot(x,y, 'o-', label=plotid, linewidth=2)
+
+            if ref:
+                axhline( [ref], linestyle='-.', linewidth=1, color='k')
+                br=report_find_bitrate_from_metric(list(zip(x,y)), ref)
+                bitref.append( { 'bitref': br, 'plotid':plotid })
+                axvline( [br], linestyle='-.', linewidth=1, color='k')
     
             axis('auto')
             legend(loc=4)
+            
+        if ref:
+            bitref = sorted( bitref, key=lambda a: a['bitref'])
+            for br in bitref:
+                br['perfpc'] =  ((bitref[len(bitref)-1]['bitref'] - br['bitref']  ) / bitref[len(bitref)-1]['bitref'] )*100 
+        
         os.makedirs('reports') if not os.path.exists('reports') else None
         savefig("reports/report_"+seq+"_"+metric+".png")
     #show()
     
-        with open("fig.html","w") as out:
-            out.write( mpld3.fig_to_html(fig) )
+       # with open("fig.html","w") as out:
+       #     out.write( mpld3.fig_to_html(fig) )
     
 def runs_with_seq(runs, name):
     """retuns list with only one specific sequence"""
@@ -219,6 +233,48 @@ def report_sequences(runs):
     for run in runs:
         seqs[run['config']['seq']] = True
     return list(seqs.keys())
+
+
+def report_find_bitrate_from_metric(plot,y):
+    """Given a set of points that define a plot, find the corresponding x given the y
+    assume x and y are
+    plot: a list of tuples with points
+    y: the point to find x for
+    """
+    pcount = len(plot)
+
+    if(pcount<2):
+        print("length of plot is less than 2")
+        if(pcount==1):
+            return plot[0][0]
+        else:
+            return 0
+
+    # select the line to interpolate
+    
+    # if y is over the last point just select the last line
+    if(y>= plot[pcount-1][1] ):
+        (x0, y0, x1, y1) = (plot[pcount-2][0], plot[pcount-2][1], plot[pcount-1][0], plot[pcount-1][1])
+    elif y< plot[0][1]:
+        (x0, y0, x1, y1) = (plot[0][0], plot[0][1], plot[1][0], plot[1][1])
+        pass
+    else:
+        # else iterate through points to select
+        for i in range(1, pcount):
+            if(y<plot[i][1] and y>=plot[i-1][1]):
+                (x0, y0, x1, y1) = (plot[i-1][0], plot[i-1][1], plot[i][0], plot[i][1])
+                break
+            
+
+    assert('x0' in locals())
+    
+    # line eq:  y = s*x + k  | x = (y-k) / s
+    # s = y1-y0/x1-x0
+    # k = y1 - s*x1
+    s = (y1-y0)/(x1-x0)
+    k = y1 - s*x1
+    x = (y-k) / s
+    return x
 
 def report_create_ratedistortion(runs, metric):
     seqs = {}
@@ -238,7 +294,7 @@ def report_create_ratedistortion(runs, metric):
         
         run['plotid'] = plotid
             
-    create_plot(seqs,metric)
+    create_plot(seqs,metric, ref=0.97)
     
         
 def report_bitrate(runs):
