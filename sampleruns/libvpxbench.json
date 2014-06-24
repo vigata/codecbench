@@ -1,14 +1,26 @@
 {
-  "sequence_dirs": ["../seq"],
-  "codec_dirs" : ["../codecs"],
-  "keeprecon" : false,
-  "frame_count" : 30,
-  "runs" : [
-  {
-    "seq" : ["foremancif"],
-    "codec" : ["libvpx"],
-    "bitrate" : [1000],
-    "cpu" : 16
-  }
-  ]
+    "sequence_dirs": ["../seq"],
+    "codec_dirs" : ["../codecs"],
+    "keeprecon" : false,
+    "frame_count" : 30,
+    "runs" : [
+    {
+        "seq" : ["foremancif"],
+        "codec" : ["libvpx"],
+        "bitrate" : [1000],
+        "cpu" : 16
+    }
+    ],
+        "reports" : [
+        {
+            // the following are the default type of report and sequence settings
+            // "type" : "rdcurve",
+            // "seq" : "all",
+            // "ref" : 0.98,
+            "metric" : "ssim"
+        },
+        {
+            // "ref" : 42,
+            "metric" : "psnr"
+        }
 }

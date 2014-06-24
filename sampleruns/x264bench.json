@@ -16,12 +16,12 @@
         // the following are the default type of report and sequence settings
         // "type" : "rdcurve",
         // "seq" : "all",
-        "metric" : "ssim",
-        "ref" : 0.97
+        // "ref" : 0.98,
+        "metric" : "ssim"
     },
     {
-        "metric" : "psnr",
-        "ref" : 42
+        // "ref" : 42,
+        "metric" : "psnr"
     }
     ]
 }

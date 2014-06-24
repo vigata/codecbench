@@ -19,14 +19,14 @@ def libvpx_handler(run):
     
     root = os.path.dirname( __file__ ) + os.sep + run['platform'] + os.sep
     
-    pars = {'codec':"vp9",
+    pars = {'codec': run['config'].get('libvpx_codec', "vp9"),
             'width': run['seq']['width'],
             'height': run['seq']['height'],
             'num' : run['seq']['fpsnum'],
             'den' : run['seq']['fpsden'],
             'bitrate' : run['config']['bitrate'],
             'output' : run['output'] +".webm",
-            'cpu' : run['config']['cpu'] if 'cpu' in run['config'] else 16,
+            'cpu' : run['config'].get('cpu', 16),
             'input' : run['seq']['abspath'],
             'encoder' : os.path.abspath(root + "vpxenc"),
             'decoder' : os.path.abspath(root + "vpxdec"),
@@ -81,7 +81,7 @@ codec = {
     "profile": "libvpx",
     "out_extension": "webm",
     "handler" : libvpx_handler,
-    "supported_pars" : {"bitrate":1000,"cpu":16},
+    "supported_pars" : {"bitrate":1000,"cpu":16,'libvpx_codec':'vp9'},
     "ratesweep_pars" : ['bitrate']
 }
 

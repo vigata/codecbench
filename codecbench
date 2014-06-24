@@ -257,9 +257,13 @@ def report_find_bitrate_from_metric(plot,y):
     x = (y-k) / s
     return x
 
-def reports_rdcurve_create_plot(seqplots,metric, ref=None):
+def reports_rdcurve_create_plot(seqplots, report):
     import matplotlib.pyplot as plt
     import matplotlib
+    
+    metric = report['metric']
+    ref = report['ref']
+    reports_dir = 'reports/' + report['name']
     
     matplotlib.rc('font', **{'weight':'normal','size':'20'})
     
@@ -298,14 +302,15 @@ def reports_rdcurve_create_plot(seqplots,metric, ref=None):
         plt.axis('auto')
 
             
-        os.makedirs('reports') if not os.path.exists('reports') else None
-        plt.savefig("reports/report_"+seq+"_"+metric+".png")
+        os.makedirs(reports_dir) if not os.path.exists(reports_dir) else None
+        plt.savefig(reports_dir + "/report_"+seq+"_"+metric+".svg")
     #show()
     
        # with open("fig.html","w") as out:
        #     out.write( mpld3.fig_to_html(fig) )
 
-def report_create_ratedistortion(runs, metric, ref=None ):
+def report_create_ratedistortion(runs, report  ):
+    metric = report['metric']
     seqs = {}
     #create unique plot ids for every run
     for run in runs:
@@ -326,9 +331,7 @@ def report_create_ratedistortion(runs, metric, ref=None ):
         
         run['plotid'] = plotid
             
-    reports_rdcurve_create_plot(seqs,metric,ref)
-    
-        
+    reports_rdcurve_create_plot(seqs,report)
 def report_bitrate(runs):
     """creates a bitrate graph for every sequence and all configurations for that sequence"""
     
@@ -345,8 +348,9 @@ def reports_generate(gconf,runconfig):
         #TODO implement 'seq' selector on report
         if not 'metric' in report:
             continue
-        report['ref'] = None if 'ref' not in report else report['ref']
-        report_create_ratedistortion(gconf['runs'],report['metric'],report['ref'])
+        report['name'] = report.get('name', os.path.splitext(os.path.basename(runconfig['origin']))[0]) 
+        report['ref'] = report.get('ref') #make sure there is a value even if its None
+        report_create_ratedistortion(gconf['runs'], report )
 
 def main(argv):
     gconf = {'root': os.path.dirname( __file__ ), 'platform': platform.system().lower()+"-"+platform.machine() }
@@ -371,6 +375,8 @@ def main(argv):
     try:
         with open(options.infile, 'r') as cfile:
             runconfig = json.loads(remove_comments(cfile.read()))
+            runconfig['origin'] = options.infile
+            
     except ValueError as e:
         print("There was a problem reading the configuration file {0}\n{1} ".format(options.infile, str(e)))
         return
