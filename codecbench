@@ -34,11 +34,25 @@ import os
 import threading
 import multiprocessing
 import platform
-from pylab import *
 from optparse import OptionParser
 import sys
+import re
 
+class Sequence:
+    def __init__(self, seqdef):
+        self.__dict__.update(seqdef)
+        self.w = self.width
+        self.h = self.height
+        self.nickname= seqdef.get('nickname', seqdef['filename'])
+        self.desc= "{nickname} {width}x{height} {format} {frame_count}F".format(**seqdef)
+        
+    def plotstr(self):
+        return "{nickname} {w}x{h}".format(**self.__dict__)
+        
+    def __str__(self):
+        return self.desc
     
+      
 def load_sequences(gconf):
     seqdirs = gconf['defaults']['sequence_dirs']
     seqdict = gconf['seqs'] = {}
@@ -51,9 +65,10 @@ def load_sequences(gconf):
                     with open(ff,'r') as jsonfile:
                         seqdef = json.loads( jsonfile.read() )
                         seqdef['abspath'] = os.path.abspath("{0}/{1}".format(root,seqdef['filename']))
-                        seqdef['nickname'] = seqdef.get('nickname', seqdef['filename'])
-                        seqdict[seqdef['nickname']] = seqdef
-                        print ("added sequence {abspath} [{width}x{height} {format} {frame_count}F {nickname}]".format(**seqdef))
+                        seq = Sequence(seqdef)
+                        
+                        seqdict[seq.nickname] = seq.__dict__
+                        print ("added sequence {abspath} [{desc}]".format(**seq.__dict__))
                         
 
 def load_codecs(gconf):
@@ -186,40 +201,6 @@ def do_run(run, gconf,sem, index):
     finally:
         sem.release()
     
-def create_plot(seqplots,metric, ref=None):
-    import matplotlib.pyplot as plt, mpld3
-    
-    for seq in seqplots:
-        fig = plt.figure()
-        bitref = []
-        for plotid in  seqplots[seq]:
-            
-            p = zip(seqplots[seq][plotid]['x'], seqplots[seq][plotid]['y'])
-            p = sorted(p, key= lambda a: a[0])
-            x,y = zip(*p)
-            x = [n/1000 for n in x]
-            plot(x,y, 'o-', label=plotid, linewidth=2)
-
-            if ref:
-                axhline( [ref], linestyle='-.', linewidth=1, color='k')
-                br=report_find_bitrate_from_metric(list(zip(x,y)), ref)
-                bitref.append( { 'bitref': br, 'plotid':plotid })
-                axvline( [br], linestyle='-.', linewidth=1, color='k')
-    
-            axis('auto')
-            legend(loc=4)
-            
-        if ref:
-            bitref = sorted( bitref, key=lambda a: a['bitref'])
-            for br in bitref:
-                br['perfpc'] =  ((bitref[len(bitref)-1]['bitref'] - br['bitref']  ) / bitref[len(bitref)-1]['bitref'] )*100 
-        
-        os.makedirs('reports') if not os.path.exists('reports') else None
-        savefig("reports/report_"+seq+"_"+metric+".png")
-    #show()
-    
-       # with open("fig.html","w") as out:
-       #     out.write( mpld3.fig_to_html(fig) )
     
 def runs_with_seq(runs, name):
     """retuns list with only one specific sequence"""
@@ -276,13 +257,62 @@ def report_find_bitrate_from_metric(plot,y):
     x = (y-k) / s
     return x
 
-def report_create_ratedistortion(runs, metric):
+def reports_rdcurve_create_plot(seqplots,metric, ref=None):
+    import matplotlib.pyplot as plt
+    import matplotlib
+    
+    matplotlib.rc('font', **{'weight':'normal','size':'20'})
+    
+    for seq in seqplots:
+        fig = plt.figure(figsize=(16,12)) #figsize is in inches
+        bitref = []
+        for plotid in  seqplots[seq]:
+            p = zip(seqplots[seq][plotid]['x'], seqplots[seq][plotid]['y'])
+            p = sorted(p, key= lambda a: a[0])
+            x,y = zip(*p)
+            x = [n/1000 for n in x]
+            line, = plt.plot(x,y, 'o-', label=plotid, linewidth=2)
+            plt.xlabel('kbps')
+            plt.ylabel(metric.upper())
+            plt.title(seqplots[seq][plotid]['title'])
+
+            if ref:
+                plt.axhline( [ref], linestyle='-.', linewidth=1, color='k')
+                br=report_find_bitrate_from_metric(list(zip(x,y)), ref)
+                bitref.append( { 'bitref': br, 'plotid':plotid, 'line':line })
+                plt.axvline( [br], linestyle='-.', linewidth=1, color='k')
+    
+            
+        if ref:
+            bitref = sorted( bitref, key=lambda a: a['bitref'])
+            for br in bitref:
+                br['perfpc'] =  -((bitref[len(bitref)-1]['bitref'] - br['bitref']  ) / bitref[len(bitref)-1]['bitref'] ) 
+            llines = []
+            llabel = []
+            for br in bitref:
+                llabel.append( ("{0} ({1:.0%})" if br['perfpc']!=0 else "{0} (ref)").format(br['line'].get_label(), br['perfpc']))
+                llines.append(br['line'])
+            plt.legend(tuple(llines), tuple(llabel),loc=4)
+        else:
+            plt.legend(loc=4)
+        plt.axis('auto')
+
+            
+        os.makedirs('reports') if not os.path.exists('reports') else None
+        plt.savefig("reports/report_"+seq+"_"+metric+".png")
+    #show()
+    
+       # with open("fig.html","w") as out:
+       #     out.write( mpld3.fig_to_html(fig) )
+
+def report_create_ratedistortion(runs, metric, ref=None ):
     seqs = {}
     #create unique plot ids for every run
     for run in runs:
         plotid = ''
         for key in sorted(run['config'].keys()):
             plotid += "{0}:{1}_".format(key, run['config'][key]) if key!='bitrate' and key!='seq' else ""
+        plotid = plotid[:-1]
         
         seqname = run['config']['seq']
         
@@ -291,10 +321,12 @@ def report_create_ratedistortion(runs, metric):
         seqs[seqname][plotid] = {'x':[], 'y':[]} if plotid not in seqs[seqname] else seqs[seqname][plotid]
         seqs[seqname][plotid]['x'].append(run['results']['bps'])
         seqs[seqname][plotid]['y'].append(run['results'][metric])
+        seqs[seqname][plotid]['title'] = Sequence(run['seq']).plotstr() + " " + metric.upper()
+
         
         run['plotid'] = plotid
             
-    create_plot(seqs,metric, ref=0.97)
+    reports_rdcurve_create_plot(seqs,metric,ref)
     
         
 def report_bitrate(runs):
@@ -303,15 +335,25 @@ def report_bitrate(runs):
     
 
     
+def remove_comments(s):
+    return re.sub('//.*$','',s,0,re.M) # replace all occurences of comments (0) with multiline flag (re.M)
+    
+def reports_generate(gconf,runconfig):
+    """ generate reports """
+    for report in runconfig['reports']:
+        #TODO implment 'type' of report
+        #TODO implement 'seq' selector on report
+        if not 'metric' in report:
+            continue
+        report['ref'] = None if 'ref' not in report else report['ref']
+        report_create_ratedistortion(gconf['runs'],report['metric'],report['ref'])
 
-    
-    
 def main(argv):
     gconf = {'root': os.path.dirname( __file__ ), 'platform': platform.system().lower()+"-"+platform.machine() }
     
     #load global config
     with open( gconf['root'] + "/codecbench.config","r") as f:
-        gconf['defaults'] = json.loads(f.read())
+        gconf['defaults'] = json.loads(remove_comments(f.read()))
         
     #load sequences and codec packs
     load_sequences(gconf)
@@ -326,10 +368,14 @@ def main(argv):
     #load configuration file, or write one if it doesn't exist
 
     print("loading " + os.path.abspath(options.infile))
-    with open(options.infile, 'r') as cfile:
-        testconfig = json.loads(cfile.read())
+    try:
+        with open(options.infile, 'r') as cfile:
+            runconfig = json.loads(remove_comments(cfile.read()))
+    except ValueError as e:
+        print("There was a problem reading the configuration file {0}\n{1} ".format(options.infile, str(e)))
+        return
     
-    expand_runs(gconf, testconfig)
+    expand_runs(gconf, runconfig)
     sem = threading.BoundedSemaphore(value=multiprocessing.cpu_count())
     ts = []
     i = 0
@@ -344,9 +390,7 @@ def main(argv):
         t.join()
  
         
-    #create bitrate reports
-    report_create_ratedistortion(gconf['runs'],'psnr')
-    report_create_ratedistortion(gconf['runs'],'ssim')
+    reports_generate(gconf, runconfig)
 
 
 
