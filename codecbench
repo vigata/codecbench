@@ -103,7 +103,11 @@ def expand_runs(gconf, testconfig):
         run = {}
         run['config'] = rconfig 
         
-        run['tools'] = {'vm': gconf['root']+'/tools/darwin/video_metrics'}
+        run['tools'] = {'vm': gconf['root']+'/tools/native/'+gconf['platform']+'/video_metrics'}
+        if not os.path.isfile(run['tools']['vm']):
+            print("can't find video metrics for this platform: "+ run['tools']['vm'])
+            exit()
+        
         run['keeprecon'] = testconfig['keeprecon']
         run['frame_count'] = testconfig['frame_count'] if 'frame_count' in testconfig else 0
 
