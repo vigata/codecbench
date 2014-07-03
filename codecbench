@@ -265,10 +265,10 @@ def reports_rdcurve_create_plot(seqplots, report):
     ref = report['ref']
     reports_dir = 'reports/' + report['name']
     
-    matplotlib.rc('font', **{'weight':'normal','size':'20'})
+    matplotlib.rc('font', **{'weight':'normal','size': report['fontsize']})
     
     for seq in seqplots:
-        fig = plt.figure(figsize=(16,12)) #figsize is in inches
+        plt.figure(figsize=(report['width']/report['dpi'],report['height']/report['dpi']),dpi=report['dpi']) #figsize is in inches
         bitref = []
         for plotid in  seqplots[seq]:
             p = zip(seqplots[seq][plotid]['x'], seqplots[seq][plotid]['y'])
@@ -303,7 +303,7 @@ def reports_rdcurve_create_plot(seqplots, report):
 
             
         os.makedirs(reports_dir) if not os.path.exists(reports_dir) else None
-        plt.savefig(reports_dir + "/report_"+seq+"_"+metric+".svg")
+        plt.savefig(reports_dir + "/report_"+seq+"_"+metric+"."+report['format'])
     #show()
     
        # with open("fig.html","w") as out:
@@ -342,15 +342,39 @@ def remove_comments(s):
     return re.sub('//.*$','',s,0,re.M) # replace all occurences of comments (0) with multiline flag (re.M)
     
 def reports_generate(gconf,runconfig):
+    if not 'reports' in runconfig:
+        return
+
+    defaults = runconfig['reports'].get('defaults', {})
+
+    if not 'reports' in runconfig['reports']:
+        print("no reports defined in reports section?")
+        return
+    
     """ generate reports """
-    for report in runconfig['reports']:
+    for report in runconfig['reports']['reports']:
+        r = {}
+        r.update(defaults)
+        r.update(report)
+
         #TODO implment 'type' of report
         #TODO implement 'seq' selector on report
-        if not 'metric' in report:
+        if not 'metric' in r:
             continue
-        report['name'] = report.get('name', os.path.splitext(os.path.basename(runconfig['origin']))[0]) 
-        report['ref'] = report.get('ref') #make sure there is a value even if its None
-        report_create_ratedistortion(gconf['runs'], report )
+        r['name'] = r.get('name', os.path.splitext(os.path.basename(runconfig['origin']))[0]) 
+        r['ref'] = r.get('ref') #make sure there is a value even if its None
+        r['format'] = r.get('format', 'png')
+        r['width'] = r.get('width',1600)
+        r['height'] = r.get('height',1200)
+        r['dpi'] = r.get('dpi',100)
+        r['fontsize'] = r.get('fontsize',16)
+        try:
+            if 'res' in r:
+                r['width'], r['height'] = int(re.findall('(\d+)x', r['res'])[0]), int(re.findall('x(\d+)', r['res'])[0])
+        except:
+            pass
+            
+        report_create_ratedistortion(gconf['runs'], r )
 
 def main(argv):
     gconf = {'root': os.path.dirname( __file__ ), 'platform': platform.system().lower()+"-"+platform.machine() }
