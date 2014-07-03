@@ -422,6 +422,7 @@ def reports_generate(gconf,runconfig):
         r['dpi'] = r.get('dpi',100)
         r['fontsize'] = r.get('fontsize',16)
         r['bitref_range'] = r.get('bitref_range', [250,4000])
+
         try:
             if 'res' in r:
                 r['width'], r['height'] = int(re.findall('(\d+)x', r['res'])[0]), int(re.findall('x(\d+)', r['res'])[0])
