@@ -11,17 +11,25 @@
         "preset" : ["medium","slow","placebo"]
     }
     ],
-    "reports" : [
-    {
-        // the following are the default type of report and sequence settings
-        // "type" : "rdcurve",
-        // "seq" : "all",
-        // "ref" : 0.98,
-        "metric" : "ssim"
-    },
-    {
+    "reports" : {
+        "defaults" : {
+            "res" : "1600x1600",
+            "fontsize" : 8,
+            "format" : "svg"
+        },
+        "reports": [
+        {
+            // the following are the default type of report and sequence settings
+            // "type" : "rdcurve",
+            // "seq" : "all",
+            "ref" : 0.98,
+            "metric" : "ssim"
+        },
+        {
         // "ref" : 42,
+        "ref" : 40,
         "metric" : "psnr"
-    }
+        }
     ]
+} 
 }

@@ -262,8 +262,10 @@ def report_find_bitrate_from_metric(plot,y):
     return x
 
 def reports_rdcurve_create_plot(seqplots, report):
-    import matplotlib.pyplot as plt
     import matplotlib
+    matplotlib.use('svg')
+
+    import matplotlib.pyplot as plt
     
     metric = report['metric']
     ref = report['ref']
@@ -388,7 +390,7 @@ def report_create_ratedistortion(runs, report  ):
         run['plotid'] = plotid
             
     reports_rdcurve_create_plot(seqs,report)
-    report_create_reference(seqs, report)
+    #report_create_reference(seqs, report)
 def report_bitrate(runs):
     """creates a bitrate graph for every sequence and all configurations for that sequence"""
     
