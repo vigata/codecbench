@@ -60,7 +60,7 @@ def load_sequences(gconf):
     for seqdir in seqdirs:
         for root,dirs,files in os.walk(gconf['root']+"/"+seqdir):
             for f in files:
-                if(f.endswith(".info")):
+                if(f.endswith(".info") or f.endswith(".json")):
                     ff = os.path.abspath("{0}/{1}".format(root,f))
                     with open(ff,'r') as jsonfile:
                         seqdef = json.loads( jsonfile.read() )
