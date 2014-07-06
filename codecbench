@@ -440,19 +440,26 @@ def reports_generate(gconf,runconfig):
 def main(argv):
     gconf = {'root': os.path.dirname( __file__ ), 'platform': platform.system().lower()+"-"+platform.machine() }
     
+    parser = OptionParser()
+    parser.add_option("-i", "--input", dest="infile", help="the input configuration file")
+    parser.add_option("-r", "--report", dest="report", help="do reports")
+    parser.add_option("-c", "--config", dest="config", default="codecbench.config", help="the main config file, defaults to 'codecbench.config'")
+
+    (options, args) = parser.parse_args()
+    
+    
     #load global config
-    with open( gconf['root'] + "/codecbench.config","r") as f:
+    with open( gconf['root'] + "/" + options.config,"r") as f:
         gconf['defaults'] = json.loads(remove_comments(f.read()))
         
     #load sequences and codec packs
     load_sequences(gconf)
     load_codecs(gconf)
     
-    parser = OptionParser()
-    parser.add_option("-i", "--input", dest="infile", default="default.json", help="the input configuration file")
-    parser.add_option("-r", "--report", dest="report", help="do reports")
-
-    (options, args) = parser.parse_args()
+    if options.infile == None:
+        print("An runs configuration file must be specified with --input")
+        exit()
+    
 
     #load configuration file, or write one if it doesn't exist
 
