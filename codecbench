@@ -37,6 +37,15 @@ import platform
 from optparse import OptionParser
 import sys
 import re
+import pickle
+
+#a json encoder that ignores not recognized python types
+class PythonObjectEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (list, dict, str, int, float, bool, type(None))):
+            return json.JSONEncoder.default(self, obj)
+        return {'_python_object': ''}
+
 
 class Sequence:
     def __init__(self, seqdef):
@@ -267,9 +276,9 @@ def reports_rdcurve_create_plot(seqplots, report):
 
     import matplotlib.pyplot as plt
     
+    ret = {'ref_plotid':None}
     metric = report['metric']
     ref = report['ref']
-    reports_dir = 'reports/' + report['name']
     
     matplotlib.rc('font', **{'weight':'normal','size': report['fontsize']})
     
@@ -302,14 +311,20 @@ def reports_rdcurve_create_plot(seqplots, report):
             for br in bitref:
                 llabel.append( ("{0} ({1:.0%})" if br['perfpc']!=0 else "{0} (ref)").format(br['line'].get_label(), br['perfpc']))
                 llines.append(br['line'])
+                if br['perfpc']==0:
+                    ret['ref_plotid'] = br['plotid']
+                    
             plt.legend(tuple(llines), tuple(llabel),loc=4)
         else:
             plt.legend(loc=4)
         plt.axis('auto')
 
             
+        reports_dir = 'reports/' + report['name']
         os.makedirs(reports_dir) if not os.path.exists(reports_dir) else None
         plt.savefig(reports_dir + "/report_"+seq+"_"+metric+"."+report['format'])
+        
+        return ret
     #show()
     
        # with open("fig.html","w") as out:
@@ -329,20 +344,25 @@ def extrapolate(x,y):
         elif x > xs[-1]:
             return ys[-1]+(x-xs[-1])*(ys[-1]-ys[-2])/(xs[-1]-xs[-2])
         else:
-            return interp1d(x)
+            return f_i(x)
 
     def ufunclike(xs):
-        return array(map(pointwise, array(xs)))
+        return array(list(map(pointwise, array(xs))))
 
     return ufunclike
        
-def report_create_reference(seqs, report):
+def report_create_cabs(seqs, report, ref_plotid=None):
+    if not ref_plotid:
+        print('couldnt calculate cabs score because no reference plot id was specified')
+        return
+    
     import numpy as np
     """ Given:
         - a codec configuration
         - a sequence or set of sequences
         - a bitrate range of interest
     """
+    
     
     # compute extrapolate functions
     for seq in seqs:
@@ -351,21 +371,75 @@ def report_create_reference(seqs, report):
             p = sorted(p, key= lambda a: a[0])
             x,y = zip(*p)
             seqs[seq][plotid]['extrap'] = extrapolate(x,y)
+            seqs[seq][plotid]['extrap_inv'] = extrapolate(y,x)
     
-    # compute differences between all plot ids
+        
+        
+    # compute cabs score to reference 
+    results = {'bitref_range':report['bitref_range'], 'metric':report['metric'], 'per_sequence': {}, 'global':{}}
     for seq in seqs:
         for plotid in seqs[seq]:
-            for plotid2 in seqs[seq]:
-                if plotid == plotid2:
-                    continue
-                xx = np.linspace( report['bitref_range'][0]*1000, report['bitref_range'][1]*1000, 1000 )
-                aa = seqs[seq][plotid]['extrap'](xx)
-                bb = seqs[seq][plotid2]['extrap'](xx)
-                avg = (aa-bb).mean()
-                
-    
+                # compute Mlow, Mhigh
+                m_low =  seqs[seq][ref_plotid]['extrap']( np.array([report['bitref_range'][0]*1000]) ) 
+                m_high = seqs[seq][ref_plotid]['extrap']( np.array([report['bitref_range'][1]*1000]) )  
+                yy = np.linspace( m_low, m_high, 1001 )
+                aa = seqs[seq][ref_plotid]['extrap_inv'](yy)
+                bb = seqs[seq][plotid]['extrap_inv'](yy)
+                avg = ((aa-bb)/aa).mean()
+                seqs[seq][plotid]["cabs"] = avg
+                results['global'][plotid] = results['global'].get(plotid, {'cabs':0,'count':0,'plotid':plotid})
+                results['global'][plotid]['cabs'] += avg
+                results['global'][plotid]['count'] += 1
+        
+        s = sorted( seqs[seq].values(), key = lambda a: a['cabs'] )
+        ss = [{'cabs':i['cabs'],'plotid':i['plotid']} for i in s ]
+        results['per_sequence'][seq] = ss
+        
+    #finish calculating global caps
+    for plotid in results['global']:
+        results['global'][plotid]['cabs'] = results['global'][plotid]['cabs'] / results['global'][plotid]['count']
+        
+    s = sorted( results['global'].values(), key = lambda a: a['cabs'] )
+    ss = [{'cabs':i['cabs'], 'plotid':i['plotid']} for i in s]
+    results['global']['ordered'] = ss
             
+    reports_dir = 'reports/' + report['name']
+    os.makedirs(reports_dir) if not os.path.exists(reports_dir) else None
+    cabsreportname = reports_dir + "/report_cabs_"+report['metric']+".json"
     
+    # write text file
+    with open(cabsreportname, "w") as f:
+        f.write(json.dumps(results, cls=PythonObjectEncoder, sort_keys=True, skipkeys=True, indent=4, separators=(',',': ')))
+    
+    #create plot
+    import matplotlib.pyplot as plt
+    import numpy as np
+    
+    i=1
+    sbcount = len(results['per_sequence'].keys()) + 1
+    plt.figure()
+    plt.subplots_adjust(left =0.3, hspace=1)
+    for seq in results['per_sequence']:
+        plt.subplot(sbcount, 1, i)
+        i+=1
+        ss = results['per_sequence'][seq]
+        ypos = np.arange(len(ss))
+        values = [s['cabs'] for s in ss]
+        labels = [s['plotid'] for s in ss]
+        plt.barh(ypos, values, align='center', alpha=0.4)
+        plt.yticks(ypos, labels)
+        plt.title(seq)
+    
+    #finally global results
+    plt.subplot(sbcount, 1, i)
+    ss = results['global']['ordered']
+    ypos = np.arange(len(ss))
+    values = [s['cabs'] for s in ss]
+    labels = [s['plotid'] for s in ss] 
+    plt.barh(ypos, values, color='green', align='center', alpha=0.4)
+    plt.yticks(ypos, labels)
+    plt.title("Global")
+    plt.savefig(reports_dir + "/report_cabs_"+report['metric']+'.svg')
 
 def report_create_ratedistortion(runs, report  ):
     metric = report['metric']
@@ -384,13 +458,14 @@ def report_create_ratedistortion(runs, report  ):
         seqs[seqname][plotid] = {'x':[], 'y':[]} if plotid not in seqs[seqname] else seqs[seqname][plotid]
         seqs[seqname][plotid]['x'].append(run['results']['bps'])
         seqs[seqname][plotid]['y'].append(run['results'][metric])
+        seqs[seqname][plotid]['plotid'] = plotid
         seqs[seqname][plotid]['title'] = Sequence(run['seq']).plotstr() + " " + metric.upper()
 
         
         run['plotid'] = plotid
             
-    reports_rdcurve_create_plot(seqs,report)
-    #report_create_reference(seqs, report)
+    rdret = reports_rdcurve_create_plot(seqs,report)
+    report_create_cabs(seqs, report, rdret['ref_plotid'] )
 def report_bitrate(runs):
     """creates a bitrate graph for every sequence and all configurations for that sequence"""
     
@@ -427,7 +502,7 @@ def reports_generate(gconf,runconfig):
         r['height'] = r.get('height',1200)
         r['dpi'] = r.get('dpi',100)
         r['fontsize'] = r.get('fontsize',16)
-        r['bitref_range'] = r.get('bitref_range', [250,4000])
+        r['bitref_range'] = r.get('bitref_range', [250,775])
 
         try:
             if 'res' in r:

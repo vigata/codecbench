@@ -85,7 +85,8 @@ def x264_handler(run):
         
             
         
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as e:
+        
         pass
     
     
