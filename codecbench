@@ -55,7 +55,7 @@ class Sequence:
         self.fpsnum = float(self.fpsnum)
         self.fpsden = float(self.fpsden)
         self.nickname= seqdef.get('nickname', seqdef['filename'])
-        self.desc= "{nickname} {width}x{height} {format} {frame_count}F".format(**seqdef)
+        self.desc= "{nickname} {width}x{height} {format} {frame_count}F {fpsnum}/{fpsden} fps".format(**seqdef)
         
     def plotstr(self):
         return "{nickname} {w}x{h}".format(**self.__dict__)
