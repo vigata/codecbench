@@ -52,8 +52,8 @@ class Sequence:
         self.__dict__.update(seqdef)
         self.w = self.width
         self.h = self.height
-        self.fpsnum = float(self.fpsnum)
-        self.fpsden = float(self.fpsden)
+        self.fpsnum = int(self.fpsnum)
+        self.fpsden = int(self.fpsden)
         self.nickname= seqdef.get('nickname', seqdef['filename'])
         self.desc= "{nickname} {width}x{height} {format} {frame_count}F {fpsnum}/{fpsden} fps".format(**seqdef)
         
