@@ -52,6 +52,8 @@ class Sequence:
         self.__dict__.update(seqdef)
         self.w = self.width
         self.h = self.height
+        self.fpsnum = float(self.fpsnum)
+        self.fpsden = float(self.fpsden)
         self.nickname= seqdef.get('nickname', seqdef['filename'])
         self.desc= "{nickname} {width}x{height} {format} {frame_count}F".format(**seqdef)
         
@@ -74,8 +76,12 @@ def load_sequences(gconf):
                     with open(ff,'r') as jsonfile:
                         seqdef = json.loads( jsonfile.read() )
                         seqdef['abspath'] = os.path.abspath("{0}/{1}".format(root,seqdef['filename']))
-                        seq = Sequence(seqdef)
                         
+                        if 'fpsnum' not in seqdef or 'fpsden' not in seqdef:
+                            print("{0} sequence does not have framerate info. skipping ...".format(seq.desc))
+                            continue
+
+                        seq = Sequence(seqdef)
                         seqdict[seq.nickname] = seq.__dict__
                         print ("added sequence {abspath} [{desc}]".format(**seq.__dict__))
                         
