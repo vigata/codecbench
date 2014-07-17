@@ -330,7 +330,7 @@ def reports_rdcurve_create_plot(seqplots, report):
         os.makedirs(reports_dir) if not os.path.exists(reports_dir) else None
         plt.savefig(reports_dir + "/report_"+seq+"_"+metric+"."+report['format'])
         
-        return ret
+    return ret
     #show()
     
        # with open("fig.html","w") as out:
