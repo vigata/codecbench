@@ -284,13 +284,20 @@ def reports_rdcurve_create_plot(seqplots, report):
     
     ret = {'ref_plotid':None}
     metric = report['metric']
-    ref = report['ref']
     
     matplotlib.rc('font', **{'weight':'normal','size': report['fontsize']})
     
     for seq in seqplots:
         plt.figure(figsize=(report['width']/report['dpi'],report['height']/report['dpi']),dpi=report['dpi']) #figsize is in inches
         bitref = []
+        
+        #determine reference metric value
+        # if not specified on report, try to gather from sequence information
+        if 'seqref' in report and seq in report['seqref']:
+            ref = report['seqref'][seq]
+        else:
+            ref = report['ref']
+        
         for plotid in  seqplots[seq]:
             p = zip(seqplots[seq][plotid]['x'], seqplots[seq][plotid]['y'])
             p = sorted(p, key= lambda a: a[0])
@@ -466,7 +473,6 @@ def report_create_ratedistortion(runs, report  ):
         seqs[seqname][plotid]['y'].append(run['results'][metric])
         seqs[seqname][plotid]['plotid'] = plotid
         seqs[seqname][plotid]['title'] = Sequence(run['seq']).plotstr() + " " + metric.upper()
-
         
         run['plotid'] = plotid
             
