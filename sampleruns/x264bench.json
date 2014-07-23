@@ -5,31 +5,36 @@
     "frame_count" : 300,
     "runs" : [
     {
-        "seq" : ["foremancif","flower"],
+        "seq" : ["foremancif"],
         "codec" : ["x264"],
-        "bitrate" : [250,300,350,400,500,550,600,700,800,900,1000],
-        "preset" : ["medium","slow","placebo","superfast"]
+        "bitrate" : [50,100],
+        "bitrate_range" : [50,1000,50],
+        "preset" : ["ultrafast"]
     }
     ],
     "reports" : {
         "defaults" : {
-            "res" : "1600x1600",
+            "res" : "800x600",
             "fontsize" : 8,
-            "format" : "svg",
-            "bitref_range" : [250,900]
+            "format" : "pdf",
+            "bitref_range" : [200,800],
+            "cabs_area" : true
         },
         "reports": [
         {
-            // the following are the default type of report and sequence settings
-            // "type" : "rdcurve",
-            // "seq" : "all",
             "ref" : 0.98,
-            "metric" : "ssim"
+            "metric" : "ssim",
+            "seqfef" : {
+                "foremancif" : 0.97
+            }
+
         },
         {
-        // "ref" : 42,
-        "ref" : 32,
-        "metric" : "psnr"
+        "ref" : 40,
+        "metric" : "psnr",
+        "seqfef" : {
+            "foremancif" : 40
+        }
         }
     ]
 } 

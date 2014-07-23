@@ -138,6 +138,16 @@ def expand_run(r, runs, gconf):
     run = r.copy()
     run['config'] = run['config'].copy()
     config = run['config']
+    # check for bitarte range expansion
+    if 'bitrate_range' in config:
+        if len(config.get('bitrate_range',[]))!=3:
+            print('ignoring bitrate range on config because there are not just 3 values. should be [start,stop,step]')
+        else:
+            a = [i for i in range(*config['bitrate_range'])]
+            print('expanded bitrate list to: ' + str(a) ) 
+            del config['bitrate_range']
+            config['bitrate'] = a
+            
     #for key in expand_keys:
     for key in config:
         if(isinstance(config[key],list) and len(config[key])>1 ):
@@ -235,7 +245,7 @@ def report_sequences(runs):
     return list(seqs.keys())
 
 
-def report_find_bitrate_from_metric(plot,y):
+def report_find_x_from_y(plot,y):
     """Given a set of points that define a plot, find the corresponding x given the y
     assume x and y are
     plot: a list of tuples with points
@@ -278,7 +288,7 @@ def report_find_bitrate_from_metric(plot,y):
 
 def reports_rdcurve_create_plot(seqplots, report):
     import matplotlib
-    matplotlib.use('svg')
+    #matplotlib.use('svg')
 
     import matplotlib.pyplot as plt
     
@@ -302,19 +312,25 @@ def reports_rdcurve_create_plot(seqplots, report):
             p = zip(seqplots[seq][plotid]['x'], seqplots[seq][plotid]['y'])
             p = sorted(p, key= lambda a: a[0])
             x,y = zip(*p)
+            seqplots[seq][plotid]['extrap'] = extrapolate(x,y)
+            seqplots[seq][plotid]['extrap_inv'] = extrapolate(y,x)
+
             x = [n/1000 for n in x]
             line, = plt.plot(x,y, 'o-', label=plotid, linewidth=2)
+            seqplots[seq][plotid]['line'] = line
             plt.xlabel('kbps')
             plt.ylabel(metric.upper())
             plt.title(seqplots[seq][plotid]['title'])
 
-            if ref:
-                plt.axhline( [ref], linestyle='-.', linewidth=1, color='k')
-                br=report_find_bitrate_from_metric(list(zip(x,y)), ref)
+            # draw line at reference
+            if ref: 
+                br=report_find_x_from_y(list(zip(x,y)), ref)
                 bitref.append( { 'bitref': br, 'plotid':plotid, 'line':line })
-                plt.axvline( [br], linestyle='-.', linewidth=1, color='k')
+                if not report.get('cabs_area', False):
+                    plt.axhline( [ref], linestyle='-.', linewidth=1, color='k')
+                    plt.axvline( [br], linestyle='-.', linewidth=1, color='k')
     
-            
+        #draw legend of plots    
         if ref:
             bitref = sorted( bitref, key=lambda a: a['bitref'])
             for br in bitref:
@@ -330,6 +346,28 @@ def reports_rdcurve_create_plot(seqplots, report):
             plt.legend(tuple(llines), tuple(llabel),loc=4)
         else:
             plt.legend(loc=4)
+            
+        #draw cabs area between the reference plot and the first plot available. This is meant to
+        # be used only with two RD curves
+        import numpy as np
+        if report.get('cabs_area', False) and ref and ret['ref_plotid']!=None and len(seqplots[seq])>1 and True:
+            for plotid in seqplots[seq]:
+                #skip is this is reference
+                if plotid==ret['ref_plotid']:
+                    continue
+                # draw area here
+                # compute Mlow, Mhigh
+                m_low =  seqplots[seq][ret['ref_plotid']]['extrap']( np.array([report['bitref_range'][0]*1000]) ) 
+                m_high = seqplots[seq][ret['ref_plotid']]['extrap']( np.array([report['bitref_range'][1]*1000]) )  
+                yy = np.linspace( m_low, m_high, 1001 )
+                aa = seqplots[seq][ret['ref_plotid']]['extrap_inv'](yy) / 1000
+                bb = seqplots[seq][plotid]['extrap_inv'](yy) / 1000
+                avg = ((aa-bb)/aa).mean()
+                plt.fill_betweenx(yy, bb, aa, hatch='x',alpha=0.5,color='g' )
+                plt.legend(tuple([seqplots[seq][plotid]['line'],seqplots[seq][ret['ref_plotid']]['line']]), tuple([plotid + " CABS({0:.0%})".format(avg), ret['ref_plotid'] + " (ref)"]),loc=4)
+                
+                
+            
         plt.axis('auto')
 
             
@@ -343,7 +381,7 @@ def reports_rdcurve_create_plot(seqplots, report):
        # with open("fig.html","w") as out:
        #     out.write( mpld3.fig_to_html(fig) )
        
-def extrapolate(x,y): 
+def extrapolate(x,y):
     from scipy.interpolate import interp1d
     from scipy import arange, array, exp
     
@@ -452,7 +490,7 @@ def report_create_cabs(seqs, report, ref_plotid=None):
     plt.barh(ypos, values, color='green', align='center', alpha=0.4)
     plt.yticks(ypos, labels)
     plt.title("Global")
-    plt.savefig(reports_dir + "/report_cabs_"+report['metric']+'.svg')
+    plt.savefig(reports_dir + "/report_cabs_"+report['metric']+report.get('format'))
 
 def report_create_ratedistortion(runs, report  ):
     metric = report['metric']
@@ -475,7 +513,9 @@ def report_create_ratedistortion(runs, report  ):
         seqs[seqname][plotid]['title'] = Sequence(run['seq']).plotstr() + " " + metric.upper()
         
         run['plotid'] = plotid
-            
+    
+    import matplotlib
+    matplotlib.use(report.get('format','svg'))        
     rdret = reports_rdcurve_create_plot(seqs,report)
     report_create_cabs(seqs, report, rdret['ref_plotid'] )
 def report_bitrate(runs):
@@ -525,8 +565,9 @@ def reports_generate(gconf,runconfig):
         report_create_ratedistortion(gconf['runs'], r )
 
 def main(argv):
-    gconf = {'root': os.path.dirname( __file__ ), 'platform': platform.system().lower()+"-"+platform.machine() }
+    gconf = {'root': os.path.dirname( __file__ ), 'platform': platform.system().lower()+"-"+platform.machine(), 'version' : '0.4.9' }
     
+    print("This is codecbench {0} starting up".format(gconf['version']))
     parser = OptionParser()
     parser.add_option("-i", "--input", dest="infile", help="the input configuration file")
     parser.add_option("-r", "--report", dest="report", help="do reports")
