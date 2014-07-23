@@ -6,15 +6,9 @@
     "runs" : [
     {
         "seq" : ["foremancif"],
-        "codec" : ["x265","x264"],
+        "codec" : ["x265"],
         "bitrate" : [200,400,600,800],
-        "preset" : ["fast","medium","slow","placebo"]
-    },
-    {
-        "seq" : ["parkrun"],
-        "codec" : ["x265","x264"],
-        "bitrate" : [1000,1500,2000,3000,4000,5000],
-        "preset" : ["fast","medium","slow","placebo"]
+        "preset" : ["fast"]
     }
     ],
     "reports" : {
