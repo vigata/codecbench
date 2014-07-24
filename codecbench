@@ -343,9 +343,11 @@ def reports_rdcurve_create_plot(seqplots, report):
                 if br['perfpc']==0:
                     ret['ref_plotid'] = br['plotid']
                     
-            plt.legend(tuple(llines), tuple(llabel),loc=4)
+            if report['legend_show']:
+                plt.legend(tuple(llines), tuple(llabel),loc=4)
         else:
-            plt.legend(loc=4)
+            if report['legend_show']:
+                plt.legend(loc=4)
             
         #draw cabs area between the reference plot and the first plot available. This is meant to
         # be used only with two RD curves
@@ -364,7 +366,8 @@ def reports_rdcurve_create_plot(seqplots, report):
                 bb = seqplots[seq][plotid]['extrap_inv'](yy) / 1000
                 avg = ((aa-bb)/aa).mean()
                 plt.fill_betweenx(yy, bb, aa, hatch='x',alpha=0.5,color='g' )
-                plt.legend(tuple([seqplots[seq][plotid]['line'],seqplots[seq][ret['ref_plotid']]['line']]), tuple([plotid + " CABS({0:.0%})".format(avg), ret['ref_plotid'] + " (ref)"]),loc=4)
+                if report['legend_show']:
+                    plt.legend(tuple([seqplots[seq][plotid]['line'],seqplots[seq][ret['ref_plotid']]['line']]), tuple([plotid + " CABS({0:.0%})".format(avg), ret['ref_plotid'] + " (ref)"]),loc=4)
                 
                 
             
@@ -555,6 +558,7 @@ def reports_generate(gconf,runconfig):
         r['dpi'] = r.get('dpi',100)
         r['fontsize'] = r.get('fontsize',16)
         r['bitref_range'] = r.get('bitref_range', [250,775])
+        r['legend_show'] = r.get('legend_show', True)
 
         try:
             if 'res' in r:
@@ -565,9 +569,9 @@ def reports_generate(gconf,runconfig):
         report_create_ratedistortion(gconf['runs'], r )
 
 def main(argv):
-    gconf = {'root': os.path.dirname( __file__ ), 'platform': platform.system().lower()+"-"+platform.machine(), 'version' : '0.4.9' }
+    gconf = {'root': os.path.dirname( __file__ ), 'platform': platform.system().lower()+"-"+platform.machine(), 'version' : '0.4.9', 'author' : 'Alberto Vigata', 'year': 2014}
     
-    print("This is codecbench {0} starting up".format(gconf['version']))
+    print("This is codecbench {version} [{author} {year}] starting up on {platform}".format(**gconf))
     parser = OptionParser()
     parser.add_option("-i", "--input", dest="infile", help="the input configuration file")
     parser.add_option("-r", "--report", dest="report", help="do reports")
