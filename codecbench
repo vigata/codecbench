@@ -365,7 +365,7 @@ def reports_rdcurve_create_plot(seqplots, report):
                 aa = seqplots[seq][ret['ref_plotid']]['extrap_inv'](yy) / 1000
                 bb = seqplots[seq][plotid]['extrap_inv'](yy) / 1000
                 avg = ((aa-bb)/aa).mean()
-                plt.fill_betweenx(yy, bb, aa, hatch='x',alpha=0.5,color='g' )
+                plt.fill_betweenx(yy, bb, aa, alpha=0.5,color='g' )
                 if report['legend_show']:
                     plt.legend(tuple([seqplots[seq][plotid]['line'],seqplots[seq][ret['ref_plotid']]['line']]), tuple([plotid + " CABS({0:.0%})".format(avg), ret['ref_plotid'] + " (ref)"]),loc=4)
                 
@@ -518,7 +518,9 @@ def report_create_ratedistortion(runs, report  ):
         run['plotid'] = plotid
     
     import matplotlib
-    matplotlib.use(report.get('format','svg'))        
+    # setting matploblig backend
+    mpl_backend_map = { 'png' : 'Agg', 'svg' : 'svg', 'pdf':'pdf' }
+    matplotlib.use( mpl_backend_map.get( report.get('format','svg'), report.get('format','svg' )))        
     rdret = reports_rdcurve_create_plot(seqs,report)
     report_create_cabs(seqs, report, rdret['ref_plotid'] )
 def report_bitrate(runs):

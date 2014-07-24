@@ -2,7 +2,7 @@ CODECbench
 ==========
 
 ## An open source video codec benchmarking tool ##
-![he](docs/images/cabs_logo.svg)
+![he](docs/images/cabs_logo.png)
 
 CODECbench is a video codec comparison tool. It allows you to analyze how one video codec performs against another, or with itself using different settings
 
@@ -89,11 +89,11 @@ CODECbench wouldn't be very useful if it didn't give you information about the a
 ```
 This will produce the following SSIM report on the reports folder. The 'ref' marker on the reports array can be used for CODECbench to calculate the bitrate savings at a specific quality point. In the example we are using 0.95 for SSIM point at which the placebo configuration gives 26% bitrate savings.
 
-![he](docs/images/ssim_report.svg)
+![he](docs/images/ssim_report.png)
 
 
 The configuration file also adds a PSNR report with a reference of 40. This is the result:
-![he](docs/images/psnr_report.svg)
+![he](docs/images/psnr_report.png)
 
 Using PSNR gives us also 27% bitrate savings for a value of 40dB, not bad. We can do better though in our analysis. CODECbench can also automatically calculate the [CABSscore](http://codecbench.nelalabs.com/cabs) for this configuration. [Visit this page to learn more about the CABSscore](http://codecbench.nelalabs.com/cabs) . To get a CABSscore, we need to define a bitrate of interest so we'll go for a range between 400 and 1000 kbps for foreman CIF. Add a 'bitrate_range' parameter in the config file and also set the report to show the 'cabs_area' like this:
 ```javascript
@@ -113,7 +113,7 @@ Using PSNR gives us also 27% bitrate savings for a value of 40dB, not bad. We ca
 
 This results in the following:
 
-![he](docs/images/cabs_report.svg)
+![he](docs/images/cabs_report.png)
 
 The green area is the CABS area. Its the area between 400 and 1000 kbps from the reference curve (medium preset) and the bitrate savings for every point. The average bitrate savings in all this point is unsurprisingly 27% so our previous measurement at just 40dB was quite close to the real CABSscore.
 ##Codec Packs##
