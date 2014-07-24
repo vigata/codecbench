@@ -34,6 +34,7 @@ def x264_handler(run):
             'muxer' : os.path.abspath(root + "MP4Box"),
             'reconfile' : run['recon'],
             'vm' : run['tools']['vm'],
+            'vgtmpeg' : run['tools']['vgtmpeg'],
             'frame_count' : run['frame_count'],
             'platform' : run['platform']
     }
@@ -63,10 +64,16 @@ def x264_handler(run):
         (totalbytes, bitsperframe, bps) = (filesize, filesize/framecount, (filesize*8)/(framecount/fps) )
         
         
-        #do decode
-        command = "{decoder}  -p InputFile={output}  -p OutputFile={reconfile}".format(**pars).split();
-        clines.append(command)
-        out = subprocess.check_output(command)
+        #do decode.
+        if True:
+            command = "{vgtmpeg}  -i {output} -y -map 0 -pix_fmt yuv420p {reconfile}".format(**pars).split();
+            clines.append(command)
+            out = subprocess.check_output(command, stderr=subprocess.STDOUT)
+        else:
+            #do decode
+            command = "{decoder}  -p InputFile={output}  -p OutputFile={reconfile}".format(**pars).split();
+            clines.append(command)
+            out = subprocess.check_output(command)
         
         #retrieve metrics
         command = "{vm} -a {input} -b {reconfile} -m psnr,ssim -w {width} -h {height} -v -x {frame_count}".format(**pars).split()

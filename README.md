@@ -141,6 +141,18 @@ You use this codec pack adding:
 * **cpu** parameter mapped to command line. 0 for slow, 1 for faster, ... 16 for realtime
 * **bitrate** this is the sweep parameter that generates streams of different size
 
+##Configuration options##
+**keeprecon** [true|false]{optional,global,run}
+: if true directs the codec pack to not delete the temporary yuv reconstructed sequences  
+
+**frame_count** [int]{optional,global,run}
+: limits the number of frames to be encoded to the int number specified
+
+**ignore** [true|false]{optional,run}
+: makes the configuration parser to ignore this particular configuration. It is sometimes useful while working on a setup to disable a particular set of configurations in the file. Setting "ignore":true, will achieve the effect of ignoring the selected configuration temporarily.
+
+**clobber** [true|false]{optional,run}
+: deletes the destination directory of the run. Use this if you are having problems with specific runs and you want to start from fresh.
 
 ##Requirements##
 * **python3** was used to write CODECbench so you'll require a python3 install

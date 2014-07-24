@@ -46,6 +46,11 @@ class PythonObjectEncoder(json.JSONEncoder):
             return json.JSONEncoder.default(self, obj)
         return {'_python_object': ''}
 
+class CBError(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
 
 class Sequence:
     def __init__(self, seqdef):
@@ -118,7 +123,10 @@ def expand_runs(gconf, testconfig):
         run = {}
         run['config'] = rconfig 
         
-        run['tools'] = {'vm': gconf['root']+'/tools/native/'+gconf['platform']+'/video_metrics'}
+        native_root = gconf['root']+'/tools/native/'+gconf['platform']
+        exe = '.exe' if gconf['platform'].startswith('windows') else ''
+        
+        run['tools'] = {'vm': native_root + '/video_metrics'+exe, 'vgtmpeg' : native_root + '/vgtmpeg'+exe }
         if not os.path.isfile(run['tools']['vm']):
             print("can't find video metrics for this platform: "+ run['tools']['vm'])
             exit()
@@ -138,6 +146,10 @@ def expand_run(r, runs, gconf):
     run = r.copy()
     run['config'] = run['config'].copy()
     config = run['config']
+    
+    if config.get('ignore', False):
+        return
+    
     # check for bitarte range expansion
     if 'bitrate_range' in config:
         if len(config.get('bitrate_range',[]))!=3:
@@ -176,8 +188,9 @@ def expand_run(r, runs, gconf):
         run['codec'] = gconf['codecs'][config['codec']]
         
         #safety checks
+        gconf['runtime_ignore_keys'] = ['ignore','clobber']
         for key in run['config']:
-            if not key in run['codec']['supported_pars'].keys() and key!='seq' and key !='codec':
+            if not key in run['codec']['supported_pars'].keys() and key!='seq' and key !='codec' and key not in gconf['runtime_ignore_keys']:
                 print("codec {0} doesn't support parameter {1}".format(run['config']['codec'], key ))
                 sys.exit(1)
         
@@ -185,21 +198,37 @@ def expand_run(r, runs, gconf):
                 
         runs.append(run)
                 
+def dictcopy_minus_keys(d, keys):
+    ret = d.copy()
+    for key in keys:
+        if key in ret:
+            del ret[key]
+    return ret
         
 def do_run(run, gconf,sem, index):
     try:
         sem.acquire()
+
         name = ""
-        for e in sorted(run['config'].keys()):
+        for e in sorted(dictcopy_minus_keys(run['config'], gconf['runtime_ignore_keys'] ).keys()):
             name += "{0}_{1}__".format(e, run['config'][e])
         
         print("running {0} {1}/{2}".format(name, index, len(gconf['runs'])))
+        if( run['config'].get('ignore',False) ):
+            print("ignore flag is set. skipping ...")
+            return
         
         run['platform'] = gconf['platform']
         run['config_name'] = name
         run['base_path'] = os.path.abspath('.') + '/runs/'+name
         runinfo_path = run['base_path'] + '/runinfo.json'
         
+        if run['config'].get('clobber', False):
+            if os.path.exists(run['base_path']):
+                print("clobbering {0} ...".format(run['base_path']))
+                import shutil
+                shutil.rmtree(run['base_path'])
+                
         if not os.path.exists(runinfo_path):
             os.makedirs(run['base_path']) if not os.path.exists(run['base_path']) else None
             
@@ -311,6 +340,8 @@ def reports_rdcurve_create_plot(seqplots, report):
         for plotid in  seqplots[seq]:
             p = zip(seqplots[seq][plotid]['x'], seqplots[seq][plotid]['y'])
             p = sorted(p, key= lambda a: a[0])
+            if len(list(p))<2:
+                raise CBError("plotid {0} has only one RD point. Aborting report".format(plotid))
             x,y = zip(*p)
             seqplots[seq][plotid]['extrap'] = extrapolate(x,y)
             seqplots[seq][plotid]['extrap_inv'] = extrapolate(y,x)
@@ -521,8 +552,12 @@ def report_create_ratedistortion(runs, report  ):
     # setting matploblig backend
     mpl_backend_map = { 'png' : 'Agg', 'svg' : 'svg', 'pdf':'pdf' }
     matplotlib.use( mpl_backend_map.get( report.get('format','svg'), report.get('format','svg' )))        
-    rdret = reports_rdcurve_create_plot(seqs,report)
-    report_create_cabs(seqs, report, rdret['ref_plotid'] )
+    try:
+        rdret = reports_rdcurve_create_plot(seqs,report)
+        report_create_cabs(seqs, report, rdret['ref_plotid'] )
+    except CBError as e:
+        print(str(e))
+        
 def report_bitrate(runs):
     """creates a bitrate graph for every sequence and all configurations for that sequence"""
     
