@@ -8,6 +8,7 @@ import subprocess
 import os
 import re
 
+
 def x264_handler(run):
     """ does a run. returns metric info 
     returns:
@@ -16,7 +17,7 @@ def x264_handler(run):
     
     produces reconstructed yuv. provides size info 
     """
-    
+
     root = os.path.dirname( __file__ ) + os.sep + run['platform'] + os.sep
     
     pars = {'codec':"x264",
@@ -31,10 +32,10 @@ def x264_handler(run):
             'input' : run['seq']['abspath'],
             'encoder' : os.path.abspath(root + "x264"),
             'decoder' : os.path.abspath(root + "ldecod"),
-            'muxer' : os.path.abspath(root + "MP4Box"),
             'reconfile' : run['recon'],
             'vm' : run['tools']['vm'],
             'vgtmpeg' : run['tools']['vgtmpeg'],
+            'muxer' : run['tools']['mp4box'],
             'frame_count' : run['frame_count'],
             'platform' : run['platform']
     }

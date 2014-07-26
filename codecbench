@@ -74,13 +74,13 @@ def load_sequences(gconf):
     seqdict = gconf['seqs'] = {}
     """ does a run for codec with conf """
     for seqdir in seqdirs:
-        for root,dirs,files in os.walk(gconf['root']+"/"+seqdir):
+        for root,dirs,files in os.walk(gconf['root']+os.sep+seqdir):
             for f in files:
                 if(f.endswith(".info") or f.endswith(".json")):
-                    ff = os.path.abspath("{0}/{1}".format(root,f))
+                    ff = os.path.abspath("{0}{1}{2}".format(root,os.sep,f))
                     with open(ff,'r') as jsonfile:
                         seqdef = json.loads( jsonfile.read() )
-                        seqdef['abspath'] = os.path.abspath("{0}/{1}".format(root,seqdef['filename']))
+                        seqdef['abspath'] = os.path.abspath("{0}{1}{2}".format(root,os.sep,seqdef['filename']))
                         
                         if 'fpsnum' not in seqdef or 'fpsden' not in seqdef:
                             print("{0} sequence does not have framerate info. skipping ...".format(seq.desc))
@@ -94,9 +94,10 @@ def load_sequences(gconf):
 def load_codecs(gconf):
     codecdirs = gconf['defaults']['codec_dirs']
     codecdict = gconf['codecs'] = {}
+    gconf['codec_modules'] = gconf.get('codec_modules',[])
     
     for codecdir in codecdirs:
-        for root,dirs,files in os.walk(gconf['root']+"/"+codecdir):
+        for root,dirs,files in os.walk(gconf['root']+os.sep+codecdir):
             for f in files:
                 if(f=="codec.py"):
                     sys.path.insert(0,os.path.abspath(root))
@@ -105,8 +106,9 @@ def load_codecs(gconf):
                     cdef = codec.copy()
                     codecdict[ cdef['nickname']] = cdef
                     print ("added codec {nickname}".format(**cdef))
+                    gconf['codec_modules'].append(sys.modules['codec'])
                     sys.path.pop(0)     
-                    codec = None        
+                    codec = None
                     del sys.modules['codec']      
                     
                     
@@ -123,10 +125,14 @@ def expand_runs(gconf, testconfig):
         run = {}
         run['config'] = rconfig 
         
-        native_root = gconf['root']+'/tools/native/'+gconf['platform']
+        native_root = "{root}{sep}tools{sep}native{sep}{platform}{sep}".format(**gconf)
         exe = '.exe' if gconf['platform'].startswith('windows') else ''
         
-        run['tools'] = {'vm': native_root + '/video_metrics'+exe, 'vgtmpeg' : native_root + '/vgtmpeg'+exe }
+        run['tools'] = {'vm': os.path.abspath(native_root+'video_metrics'+exe), \
+                'vgtmpeg' : os.path.abspath(native_root+'vgtmpeg'+exe), \
+                'mp4box' :  os.path.abspath(native_root+'MP4Box'+exe), \
+                'h265refdec' : os.path.abspath(native_root+'TAppDecoder'+exe) }
+
         if not os.path.isfile(run['tools']['vm']):
             print("can't find video metrics for this platform: "+ run['tools']['vm'])
             exit()
@@ -220,8 +226,8 @@ def do_run(run, gconf,sem, index):
         
         run['platform'] = gconf['platform']
         run['config_name'] = name
-        run['base_path'] = os.path.abspath('.') + '/runs/'+name
-        runinfo_path = run['base_path'] + '/runinfo.json'
+        run['base_path'] = os.path.abspath('.') +os.sep+'runs'+os.sep+name+os.sep
+        runinfo_path = run['base_path'] + os.sep + 'runinfo.json'
         
         if run['config'].get('clobber', False):
             if os.path.exists(run['base_path']):
@@ -232,8 +238,8 @@ def do_run(run, gconf,sem, index):
         if not os.path.exists(runinfo_path):
             os.makedirs(run['base_path']) if not os.path.exists(run['base_path']) else None
             
-            run['output'] = run['base_path']+'/out' 
-            run['recon'] = run['base_path']+'/recon.yuv'
+            run['output'] = run['base_path']+'out' 
+            run['recon'] = run['base_path']+'recon.yuv'
             
             hdlr = run['codec']['handler']
             if not callable(hdlr):
@@ -241,7 +247,7 @@ def do_run(run, gconf,sem, index):
             else:
                 hdlr(run)
             
-            with open(run['base_path']+'/runinfo.json','w') as rfile:
+            with open(run['base_path']+'runinfo.json','w') as rfile:
                 #json.dumps can't easily handle non trivial json values, so we remove the handler from serialization
                 runs = run.copy()
                 runs['codec']=None
@@ -405,9 +411,9 @@ def reports_rdcurve_create_plot(seqplots, report):
         plt.axis('auto')
 
             
-        reports_dir = 'reports/' + report['name']
+        reports_dir = 'reports'+os.sep + report['name']
         os.makedirs(reports_dir) if not os.path.exists(reports_dir) else None
-        plt.savefig(reports_dir + "/report_"+seq+"_"+metric+"."+report['format'])
+        plt.savefig(reports_dir + os.sep +"report_"+seq+"_"+metric+"."+report['format'])
         
     return ret
     #show()
@@ -488,9 +494,9 @@ def report_create_cabs(seqs, report, ref_plotid=None):
     ss = [{'cabs':i['cabs'], 'plotid':i['plotid']} for i in s]
     results['global']['ordered'] = ss
             
-    reports_dir = 'reports/' + report['name']
+    reports_dir = 'reports'+os.sep + report['name']
     os.makedirs(reports_dir) if not os.path.exists(reports_dir) else None
-    cabsreportname = reports_dir + "/report_cabs_"+report['metric']+".json"
+    cabsreportname = reports_dir + os.sep + "report_cabs_"+report['metric']+".json"
     
     # write text file
     with open(cabsreportname, "w") as f:
@@ -524,16 +530,16 @@ def report_create_cabs(seqs, report, ref_plotid=None):
     plt.barh(ypos, values, color='green', align='center', alpha=0.4)
     plt.yticks(ypos, labels)
     plt.title("Global")
-    plt.savefig(reports_dir + "/report_cabs_"+report['metric']+report.get('format'))
+    plt.savefig(reports_dir + os.sep + "report_cabs_"+report['metric']+report.get('format'))
 
-def report_create_ratedistortion(runs, report  ):
+def report_create_ratedistortion(gconf, runs, report  ):
     metric = report['metric']
     seqs = {}
     #create unique plot ids for every run
     for run in runs:
         plotid = ''
         for key in sorted(run['config'].keys()):
-            plotid += "{0}:{1}_".format(key, run['config'][key]) if key!='bitrate' and key!='seq' else ""
+            plotid += "{0}:{1}_".format(key, run['config'][key]) if key!='bitrate' and key!='seq' and key not in gconf['runtime_ignore_keys'] else ""
         plotid = plotid[:-1]
         
         seqname = run['config']['seq']
@@ -603,22 +609,33 @@ def reports_generate(gconf,runconfig):
         except:
             pass
             
-        report_create_ratedistortion(gconf['runs'], r )
+        report_create_ratedistortion(gconf, gconf['runs'], r )
+
+machine_map = {'amd64':'x86_64'}
 
 def main(argv):
-    gconf = {'root': os.path.dirname( __file__ ), 'platform': platform.system().lower()+"-"+platform.machine(), 'version' : '0.4.9', 'author' : 'Alberto Vigata', 'year': 2014}
+    gconf = {'root': os.path.abspath( os.path.dirname( __file__ )), 'sep' : os.sep, \
+            'platform': platform.system().lower()+"-"+ machine_map.get(platform.machine().lower(), platform.machine().lower()), \
+            'version' : '0.4.10', 'author' : 'Alberto Vigata', 'year': 2014}
     
+
     print("This is codecbench {version} [{author} {year}] starting up on {platform}".format(**gconf))
     parser = OptionParser()
     parser.add_option("-i", "--input", dest="infile", help="the input configuration file")
     parser.add_option("-r", "--report", dest="report", help="do reports")
     parser.add_option("-c", "--config", dest="config", default="codecbench.config", help="the main config file, defaults to 'codecbench.config'")
+    parser.add_option("-v", "--verbose",dest="verbose",default=False )
 
     (options, args) = parser.parse_args()
     
+    import pprint
+    pp = pprint.PrettyPrinter(indent=4)
+    if options.verbose:
+        gconf['verbose'] = True
+        pp.pprint(gconf)
     
     #load global config
-    with open( gconf['root'] + "/" + options.config,"r") as f:
+    with open( gconf['root'] + '/' + options.config,"r") as f:
         gconf['defaults'] = json.loads(remove_comments(f.read()))
         
     #load sequences and codec packs
