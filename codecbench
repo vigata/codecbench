@@ -543,6 +543,9 @@ def report_create_ratedistortion(gconf, runs, report  ):
         plotid = plotid[:-1]
         
         seqname = run['config']['seq']
+
+        if 'results' not in run:
+            raise CBError('results not available for {0}'.format(run['config_name']))
         
         # make sure dics  and lists are created
         seqs[seqname] = {} if seqname not in seqs else seqs[seqname]

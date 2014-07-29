@@ -83,7 +83,8 @@ def x265_handler(run):
         
             
         
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as e:
+        print(e)
         pass
     
     
