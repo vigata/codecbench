@@ -1,0 +1,40 @@
+{
+    "sequence_dirs": ["../seq"],
+    "codec_dirs" : ["../codecs"],
+    "keeprecon" : false,
+    "runs" : [
+    {
+        "seq" : ["foremancif"],
+        "codec" : ["x264"],
+        "bitrate" : [50,100],
+        "bitrate_range" : [50,1000,50],
+        "preset" : ["ultrafast"]
+    }
+    ],
+    "reports" : {
+        "defaults" : {
+            "res" : "800x600",
+            "fontsize" : 8,
+            "format" : "pdf",
+            "bitref_range" : [200,800],
+            "cabs_area" : true
+        },
+        "reports": [
+        {
+            "ref" : 0.98,
+            "metric" : "ssim",
+            "seqfef" : {
+                "foremancif" : 0.97
+            }
+
+        },
+        {
+        "ref" : 40,
+        "metric" : "psnr",
+        "seqfef" : {
+            "foremancif" : 40
+        }
+        }
+    ]
+} 
+}
