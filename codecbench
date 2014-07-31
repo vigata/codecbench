@@ -46,6 +46,10 @@ class PythonObjectEncoder(json.JSONEncoder):
             return json.JSONEncoder.default(self, obj)
         return {'_python_object': ''}
 
+def objdump(obj):
+    return json.dumps(obj, cls=PythonObjectEncoder, sort_keys=True, skipkeys=True, indent=4, separators=(',',': '))
+                        
+
 class CBError(Exception):
     def __init__(self, value):
         self.value = value
@@ -115,6 +119,9 @@ def load_codecs(gconf):
                         
                     codecdict[ cdef['nickname']] = cdef
                     print ("added codec {nickname} => ({version})".format(**cdef))
+                    if gconf.get('verbose',False):
+                        print(objdump(cdef))
+                        
                     gconf['codec_modules'].append(sys.modules['codec'])
                     sys.path.pop(0)     
                     codec = None
@@ -523,7 +530,7 @@ def report_create_cabs(seqs, report, ref_plotid=None):
     
     # write text file
     with open(cabsreportname, "w") as f:
-        f.write(json.dumps(results, cls=PythonObjectEncoder, sort_keys=True, skipkeys=True, indent=4, separators=(',',': ')))
+        f.write(objdump(results))
     
     #create plot
     import matplotlib.pyplot as plt
@@ -650,7 +657,8 @@ def main(argv):
     parser.add_option("-i", "--input", dest="infile", help="the input configuration file")
     parser.add_option("-r", "--report", dest="report", help="do reports")
     parser.add_option("-c", "--config", dest="config", default="codecbench.config", help="the main config file, defaults to 'codecbench.config'")
-    parser.add_option("-v", "--verbose",dest="verbose",default=False )
+    parser.add_option("-v", "--verbose",action="store_true", dest="verbose",default=False )
+    parser.add_option("--dump-codecs", action="store_true",   dest="dump_codecs",  help="Dumps codecs info")
 
     (options, args) = parser.parse_args()
     
@@ -667,6 +675,10 @@ def main(argv):
     #load sequences and codec packs
     load_sequences(gconf)
     load_codecs(gconf)
+    
+    if options.dump_codecs:
+        print(objdump(gconf['codecs']))
+        exit()
     
     if options.infile == None:
         print("An runs configuration file must be specified with --input")
