@@ -395,9 +395,16 @@ def reports_rdcurve_create_plot(seqplots, report):
                 if plotid==ret['ref_plotid']:
                     continue
                 # draw area here
+                if 'cabs_bitref_range' in report and seq in report['cabs_bitref_range']:
+                    bitref_range_low =  report['cabs_bitref_range'][seq][0]
+                    bitref_range_high = report['cabs_bitref_range'][seq][1]
+                else:
+                    bitref_range_low = report['bitref_range'][0]
+                    bitref_range_high= report['bitref_range'][1]
+
                 # compute Mlow, Mhigh
-                m_low =  seqplots[seq][ret['ref_plotid']]['extrap']( np.array([report['bitref_range'][0]*1000]) ) 
-                m_high = seqplots[seq][ret['ref_plotid']]['extrap']( np.array([report['bitref_range'][1]*1000]) )  
+                m_low =  seqplots[seq][ret['ref_plotid']]['extrap']( np.array([bitref_range_low *1000]) ) 
+                m_high = seqplots[seq][ret['ref_plotid']]['extrap']( np.array([bitref_range_high *1000]) )  
                 yy = np.linspace( m_low, m_high, 1001 )
                 aa = seqplots[seq][ret['ref_plotid']]['extrap_inv'](yy) / 1000
                 bb = seqplots[seq][plotid]['extrap_inv'](yy) / 1000
@@ -467,12 +474,19 @@ def report_create_cabs(seqs, report, ref_plotid=None):
         
         
     # compute cabs score to reference 
-    results = {'bitref_range':report['bitref_range'], 'metric':report['metric'], 'per_sequence': {}, 'global':{}}
+    results = {'bitref_range': report.get('cabs_bitref_range', report.get('bitref_range')), 'metric':report['metric'], 'per_sequence': {}, 'global':{}}
     for seq in seqs:
         for plotid in seqs[seq]:
+                if 'cabs_bitref_range' in report and seq in report['cabs_bitref_range']:
+                    bitref_range_low =  report['cabs_bitref_range'][seq][0]
+                    bitref_range_high = report['cabs_bitref_range'][seq][1]
+                else:
+                    bitref_range_low = report['bitref_range'][0]
+                    bitref_range_high= report['bitref_range'][1]
+
                 # compute Mlow, Mhigh
-                m_low =  seqs[seq][ref_plotid]['extrap']( np.array([report['bitref_range'][0]*1000]) ) 
-                m_high = seqs[seq][ref_plotid]['extrap']( np.array([report['bitref_range'][1]*1000]) )  
+                m_low =  seqs[seq][ref_plotid]['extrap']( np.array([ bitref_range_low  *1000]) ) 
+                m_high = seqs[seq][ref_plotid]['extrap']( np.array([ bitref_range_high *1000]) )  
                 yy = np.linspace( m_low, m_high, 1001 )
                 aa = seqs[seq][ref_plotid]['extrap_inv'](yy)
                 bb = seqs[seq][plotid]['extrap_inv'](yy)
