@@ -94,16 +94,17 @@ def init(gconf):
          
         p = subprocess.Popen( [exe], stderr=subprocess.PIPE, stdout=subprocess.PIPE )
         out, err = p.communicate()
+        err = err.decode().replace('\r\n','\n')
         
-        search = re.compile("vp8.+(v\d+\..*)", re.MULTILINE).search(err.decode())
-        vp8ver, = search.groups()
+        search = re.compile("vp8.+(v\d+\..*)$", re.MULTILINE).search(err)
+        vp8ver,  = search.groups()
         
-        search = re.compile("vp9.+(v\d+\..*)", re.MULTILINE).search(err.decode())
+        search = re.compile("vp9.+(v\d+\..*)$", re.MULTILINE).search(err)
         vp9ver, = search.groups()
         
         version = "vp8: {0}, vp9: {1}".format(vp8ver, vp9ver)
         version_long = version
-    except:
+    except Exception as e:
         version = "?"
         version_long = "??"
         

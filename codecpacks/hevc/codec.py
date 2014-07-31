@@ -116,7 +116,7 @@ def init(gconf):
         
         version = ver 
         version_long = version
-    except:
+    except Exception as e:
         version = "?"
         version_long = "??"
         
