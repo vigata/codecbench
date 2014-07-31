@@ -85,4 +85,32 @@ codec = {
     "ratesweep_pars" : ['bitrate']
 }
 
+
+def init(gconf):
+    """ returns codec struct """
+    # figure out versions
+    exe = os.path.dirname( __file__ ) + os.sep + gconf['platform'] + os.sep + 'vpxenc'
+    try:
+         
+        p = subprocess.Popen( [exe], stderr=subprocess.PIPE, stdout=subprocess.PIPE )
+        out, err = p.communicate()
+        
+        search = re.compile("vp8.+(v\d+\..*)", re.MULTILINE).search(err.decode())
+        vp8ver, = search.groups()
+        
+        search = re.compile("vp9.+(v\d+\..*)", re.MULTILINE).search(err.decode())
+        vp9ver, = search.groups()
+        
+        version = "vp8: {0}, vp9: {1}".format(vp8ver, vp9ver)
+        version_long = version
+    except:
+        version = "?"
+        version_long = "??"
+        
+    codec['version'] = version
+    codec['version_long'] = version_long
+    
+    return codec
+    
+
     

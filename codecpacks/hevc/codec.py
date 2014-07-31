@@ -101,4 +101,28 @@ codec = {
     "ratesweep_pars" : ['bitrate']
 }
 
+def init(gconf):
+    """ returns codec struct """
+    # figure out versions
+    exe = os.path.dirname( __file__ ) + os.sep + gconf['platform'] + os.sep + 'TAppEncoder'
+    try:
+         
+        p = subprocess.Popen( [exe], stderr=subprocess.PIPE, stdout=subprocess.PIPE )
+        out, err = p.communicate()
+        
+        search = re.compile("^(HM.+)$", re.MULTILINE).search(out.decode())
+        ver, = search.groups()
+        
+        
+        version = ver 
+        version_long = version
+    except:
+        version = "?"
+        version_long = "??"
+        
+    codec['version'] = version
+    codec['version_long'] = version_long
+    
+    return codec
+    
     

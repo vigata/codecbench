@@ -97,4 +97,20 @@ codec = {
     "ratesweep_pars" : ['bitrate']
 }
 
+def init(gconf):
+    """ returns codec struct """
+    # figure out versions
+    exe = os.path.dirname( __file__ ) + os.sep + gconf['platform'] + os.sep + 'x265'
+    try:
+        out = subprocess.check_output([exe , "--version"], stderr=subprocess.STDOUT)
+        version =  out.splitlines()[0].decode()
+        version_long = out.decode()
+    except:
+        version = "?"
+        version_long = "??"
+        
+    codec['version'] = version
+    codec['version_long'] = version_long
+    
+    return codec
     

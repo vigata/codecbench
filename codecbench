@@ -102,10 +102,19 @@ def load_codecs(gconf):
                 if(f=="codec.py"):
                     sys.path.insert(0,os.path.abspath(root))
                     # this will import the codec definition and the handlers
-                    from codec import codec
-                    cdef = codec.copy()
+                    # if there is init function, use that to get cdef
+                    import codec
+                    
+                    if 'init' in codec.__dict__:
+                        cdef = codec.init(gconf).copy()
+                    else:
+                        cdef = codec.codec.copy()
+                        
+                    cdef['version']      = cdef.get('version', '?')
+                    cdef['version_long'] = cdef.get('version_long', '??')
+                        
                     codecdict[ cdef['nickname']] = cdef
-                    print ("added codec {nickname}".format(**cdef))
+                    print ("added codec {nickname} => ({version})".format(**cdef))
                     gconf['codec_modules'].append(sys.modules['codec'])
                     sys.path.pop(0)     
                     codec = None
@@ -250,8 +259,8 @@ def do_run(run, gconf,sem, index):
             with open(run['base_path']+'runinfo.json','w') as rfile:
                 #json.dumps can't easily handle non trivial json values, so we remove the handler from serialization
                 runs = run.copy()
-                runs['codec']=None
-                rfile.write(json.dumps(runs,sort_keys=True, skipkeys=True, indent=4, separators=(',',': ')))
+                #runs['codec']=None
+                rfile.write(json.dumps(runs, cls=PythonObjectEncoder, sort_keys=True, skipkeys=True, indent=4, separators=(',',': ')))
             print("done {0}".format(name))
         else:
             print("using existing run at " + runinfo_path)

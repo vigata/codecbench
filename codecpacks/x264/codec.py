@@ -94,8 +94,9 @@ def x264_handler(run):
             
         
     except subprocess.CalledProcessError as e:
-        
         pass
+    
+        
     
     
 codec = {
@@ -103,8 +104,26 @@ codec = {
     "profile": "x264",
     "out_extension": "mkv",
     "handler" : x264_handler,
+    "version" : "",
+    "version_long" : "",
     "supported_pars" : {"bitrate":1000,"preset":"fast"},
     "ratesweep_pars" : ['bitrate']
 }
 
     
+def init(gconf):
+    """ returns codec struct """
+    # figure out versions
+    exe = os.path.dirname( __file__ ) + os.sep + gconf['platform'] + os.sep + 'x264'
+    try:
+        out = subprocess.check_output([exe , "--version"], stderr=subprocess.STDOUT)
+        version =  out.splitlines()[0].decode()
+        version_long = out.decode()
+    except:
+        version = "?"
+        version_long = "??"
+        
+    codec['version'] = version
+    codec['version_long'] = version_long
+    
+    return codec
