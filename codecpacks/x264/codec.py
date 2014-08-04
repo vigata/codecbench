@@ -67,7 +67,7 @@ def x264_handler(run):
         
         #do decode.
         if True:
-            command = "{vgtmpeg}  -i {output} -y -map 0 -pix_fmt yuv420p {reconfile}".format(**pars).split();
+            command = "{vgtmpeg}  -i {output} -y -map 0 -pix_fmt yuv420p -vsync 0 {reconfile}".format(**pars).split();
             clines.append(command)
             out = subprocess.check_output(command, stderr=subprocess.STDOUT)
         else:
