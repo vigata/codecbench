@@ -41,6 +41,7 @@ def libvpx_handler(run):
         
         clines = []
         command = "{encoder} -v --cpu-used={cpu}  -p 1  --fps={num}/{den} --target-bitrate={bitrate} --codec={codec} -w {width} -h {height} -o {output} --limit={frame_count} {input}".format(**pars).split()
+        clines.append(command)
         # do encode
         out = subprocess.check_output(command,stderr=subprocess.STDOUT).decode("utf-8")
         
@@ -53,10 +54,12 @@ def libvpx_handler(run):
         
         #do decode
         command = "{decoder}  {output} --i420  -o {reconfile}".format(**pars).split();
+        clines.append(command)
         out = subprocess.check_output(command)
         
         #retrieve metrics
         command = "{vm} -a {input} -b {reconfile} -m psnr,ssim -w {width} -h {height} -v -x {frame_count}".format(**pars).split()
+        clines.append(command)
         mout = subprocess.check_output(command).decode('utf-8')
         
         psnr = re.compile("psnr: (.+)$", re.MULTILINE ).search(mout).group(1) 
@@ -66,7 +69,7 @@ def libvpx_handler(run):
         os.remove(run['recon']) if not run['keeprecon'] else None
         
         #print("psnr: {0}    ssim: {1}".format(psnr,ssim))
-        run['results'] = {'psnr':float(psnr), 'ssim':float(ssim), 'totalbytes': int(totalbytes), 'bitsperframe': int(bitsperframe), 'bps':int(bps) }
+        run['results'] = {'psnr':float(psnr), 'ssim':float(ssim), 'totalbytes': int(totalbytes), 'bitsperframe': int(bitsperframe), 'bps':int(bps), 'clines':clines }
         
         
             

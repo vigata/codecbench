@@ -630,6 +630,11 @@ def report_create_ratedistortion(gconf, runs, report  ):
         # codec specs in html file
         html+= "<h1>Codec Signatures</h1><pre lang='javascript'>{0}</pre>".format(objdump(gconf['codecs']))
         html+= "<h1>CODECbench configuration</h1><pre lang='javascript'>{0}</pre>".format(objdump(gconf['original_config']))
+        html+= "<h1>Command lines</h1>"
+        for run in runs:
+            html+= "<h3>{0}</h3>".format(run['config_name'])
+            html+= "<pre lang='javascript' style='font-size: 0.5em;'>{0}</pre>".format(objdump(run['results']))
+            
         with open(reports_dir+os.sep+"report_{0}.html".format(report['metric']),'w') as htout:
             htout.write(html)
             
