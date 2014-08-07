@@ -72,7 +72,24 @@ class Sequence:
     def __str__(self):
         return self.desc
     
-      
+    
+def file_todataurl(file):
+    import base64
+    ext = os.path.splitext(file)[1]
+    extmime = { '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.gif':'image/gif','.png':'image/png', '.svg':'image/svg+xml'}
+    if not ext in extmime:
+        print("{0} is an unknown extension".format(ext))
+        return ""
+    #read file
+    with open(file, "rb") as f:
+        data = f.read()
+
+    pars = {}
+    pars['mimetype'] = extmime[ext]
+    pars['data'] = base64.b64encode(data).decode('utf-8')
+
+    return "data:{mimetype};base64,{data}".format(**pars)
+
 def load_sequences(gconf):
     seqdirs = gconf['defaults']['sequence_dirs']
     seqdict = gconf['seqs'] = {}
@@ -136,6 +153,7 @@ def expand_runs(gconf, testconfig):
 
 
     gconf['runs'] = []
+    gconf['original_config'] = testconfig
 
     for rconfig in testconfig['runs']:
         run = {}
@@ -337,15 +355,18 @@ def report_find_x_from_y(plot,y):
     x = (y-k) / s
     return x
 
-def reports_rdcurve_create_plot(seqplots, report):
+def reports_rdcurve_create_plot(seqplots, report, repopt ):
     import matplotlib
     #matplotlib.use('svg')
 
     import matplotlib.pyplot as plt
     
+    
     ret = {'ref_plotid':None}
     metric = report['metric']
-    
+
+    htmlout = "<h1> RD curves ({0})</h1>".format(report['metric'])
+
     matplotlib.rc('font', **{'weight':'normal','size': report['fontsize']})
     
     for seq in seqplots:
@@ -433,11 +454,11 @@ def reports_rdcurve_create_plot(seqplots, report):
             
         plt.axis('auto')
 
-            
-        reports_dir = 'reports'+os.sep + report['name']
-        os.makedirs(reports_dir) if not os.path.exists(reports_dir) else None
-        plt.savefig(reports_dir + os.sep +"report_"+seq+"_"+metric+"."+report['format'])
+        imgfile = repopt['reports_dir'] + os.sep +"report_"+seq+"_"+metric+"."+report['format']
+        plt.savefig(imgfile)
+        htmlout += "<img src='{0}'/>\n".format(file_todataurl(imgfile))
         
+    repopt['htmlout'] = htmlout   
     return ret
     #show()
     
@@ -465,7 +486,7 @@ def extrapolate(x,y):
 
     return ufunclike
        
-def report_create_cabs(seqs, report, ref_plotid=None):
+def report_create_cabs(seqs, report, ref_plotid=None, repopt=None ):
     if not ref_plotid:
         print('couldnt calculate cabs score because no reference plot id was specified')
         return
@@ -524,9 +545,8 @@ def report_create_cabs(seqs, report, ref_plotid=None):
     ss = [{'cabs':i['cabs'], 'plotid':i['plotid']} for i in s]
     results['global']['ordered'] = ss
             
-    reports_dir = 'reports'+os.sep + report['name']
-    os.makedirs(reports_dir) if not os.path.exists(reports_dir) else None
-    cabsreportname = reports_dir + os.sep + "report_cabs_"+report['metric']+".json"
+
+    cabsreportname = repopt['reports_dir'] + os.sep + "report_cabs_"+report['metric']+".json"
     
     # write text file
     with open(cabsreportname, "w") as f:
@@ -560,11 +580,14 @@ def report_create_cabs(seqs, report, ref_plotid=None):
     plt.barh(ypos, values, color='green', align='center', alpha=0.4)
     plt.yticks(ypos, labels)
     plt.title("Global")
-    plt.savefig(reports_dir + os.sep + "report_cabs_"+report['metric']+report.get('format'))
+    imgfile = repopt['reports_dir'] + os.sep + "report_cabs_"+report['metric']+'.'+report.get('format')
+    plt.savefig(imgfile)
+    repopt['htmlout'] = "<h1>CABSscore info</h1><img src='{0}'/>".format(file_todataurl(imgfile))
 
 def report_create_ratedistortion(gconf, runs, report  ):
     metric = report['metric']
     seqs = {}
+    
     #create unique plot ids for every run
     for run in runs:
         plotid = ''
@@ -591,9 +614,25 @@ def report_create_ratedistortion(gconf, runs, report  ):
     # setting matploblig backend
     mpl_backend_map = { 'png' : 'Agg', 'svg' : 'svg', 'pdf':'pdf' }
     matplotlib.use( mpl_backend_map.get( report.get('format','svg'), report.get('format','svg' )))        
+
+    reports_dir = 'reports'+os.sep + report['name']
+    os.makedirs(reports_dir) if not os.path.exists(reports_dir) else None
+    repopt = {'htmlout':"", 'reports_dir': reports_dir}
+    html =""
     try:
-        rdret = reports_rdcurve_create_plot(seqs,report)
-        report_create_cabs(seqs, report, rdret['ref_plotid'] )
+        rdret = reports_rdcurve_create_plot(seqs,report, repopt)
+        html += repopt['htmlout']
+        
+        repopt['htmlout'] = ""
+        report_create_cabs(seqs, report, rdret['ref_plotid'], repopt )
+        html += repopt['htmlout']
+        
+        # codec specs in html file
+        html+= "<h1>Codec Signatures</h1><pre lang='javascript'>{0}</pre>".format(objdump(gconf['codecs']))
+        html+= "<h1>CODECbench configuration</h1><pre lang='javascript'>{0}</pre>".format(objdump(gconf['original_config']))
+        with open(reports_dir+os.sep+"report_{0}.html".format(report['metric']),'w') as htout:
+            htout.write(html)
+            
     except CBError as e:
         print(str(e))
         
@@ -658,7 +697,7 @@ def main(argv):
     parser.add_option("-r", "--report", dest="report", help="do reports")
     parser.add_option("-c", "--config", dest="config", default="codecbench.config", help="the main config file, defaults to 'codecbench.config'")
     parser.add_option("-v", "--verbose",action="store_true", dest="verbose",default=False )
-    parser.add_option("--dump-codecs", action="store_true",   dest="dump_codecs",  help="Dumps codecs info")
+    parser.add_option("--dump-codecs", action="store_true",   dest="dump_codecs",  help="Dumps codecpacks signatures")
 
     (options, args) = parser.parse_args()
     
