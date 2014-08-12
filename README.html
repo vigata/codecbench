@@ -195,6 +195,84 @@ running bitrate_200__codec_x265__preset_placebo__seq_foremancif__ 2/36
 <li>
 <strong>bitrate</strong> this is the sweep parameter that generates streams of different size</li>
 </ul><h2>
+<a name="user-content-configuration-options" class="anchor" href="#configuration-options" aria-hidden="true"><span class="octicon octicon-link"></span></a>Configuration options</h2>
+
+<p>Here are a few of the configuration options you can use. The format of specification is like the following:<br><code>property : [values: (default)]{optional|required}</code>  </p>
+
+<h3>
+<a name="user-content-run-options" class="anchor" href="#run-options" aria-hidden="true"><span class="octicon octicon-link"></span></a>Run options</h3>
+
+<ul>
+<li><p><code>keeprecon      : [true|false (false)]{optional}</code><br>
+If true directs the codec pack to not delete the temporary yuv reconstructed sequences  </p></li>
+<li><p><code>frame_count   : [int (seq_frame_count)]{optional}</code><br>
+limits the number of frames to be encoded to the int number specified</p></li>
+<li><p><code>ignore    :[true|false (false)]{optional}</code><br>
+makes the configuration parser to ignore this particular configuration. It is sometimes useful while working on a setup to disable a particular set of configurations in the file. Setting "ignore":true, will achieve the effect of ignoring the selected configuration temporarily.</p></li>
+<li><p><code>clobber   : [true|false (false)]{optional}</code><br>
+deletes the destination directory of the run. Use this if you are having problems with specific runs and you want to start from fresh. For example:   </p></li>
+</ul><div class="highlight highlight-javascript"><pre><span class="p">{</span>
+        <span class="s2">"seq"</span> <span class="o">:</span> <span class="p">[</span><span class="s2">"foreman4k"</span><span class="p">,</span><span class="s2">"coastguard4k"</span><span class="p">,</span><span class="s2">"cactus4k"</span><span class="p">,</span><span class="s2">"mobile4k"</span><span class="p">,</span><span class="s2">"suzie4k"</span><span class="p">],</span>
+        <span class="s2">"codec"</span> <span class="o">:</span> <span class="p">[</span><span class="s2">"x264"</span><span class="p">],</span>
+        <span class="s2">"bitrate_range"</span> <span class="o">:</span> <span class="p">[</span><span class="mi">1000</span><span class="p">,</span><span class="mi">5000</span><span class="p">,</span><span class="mi">250</span><span class="p">],</span>
+        <span class="s2">"preset"</span> <span class="o">:</span> <span class="p">[</span><span class="s2">"medium"</span><span class="p">],</span>
+        <span class="s2">"ignore"</span> <span class="o">:</span> <span class="kc">true</span><span class="p">,</span>
+        <span class="s2">"clobber"</span> <span class="o">:</span> <span class="kc">true</span>
+<span class="p">}</span>
+</pre></div>
+
+<p>Given <code>ignore</code> is set to true this configuration section will be ignored until you remove the parameter or set it to false. If set to false, it will also clobber the existing directory before doing every run.</p>
+
+<h3>
+<a name="user-content-reporting-options" class="anchor" href="#reporting-options" aria-hidden="true"><span class="octicon octicon-link"></span></a>Reporting options</h3>
+
+<p>The reports section has a defaults section that gets inherited by all others section. </p>
+
+<ul>
+<li><p><code>res      : [int X int (1600x1200)]{optional}</code><br>
+The resolution of the report graphics</p></li>
+<li><p><code>fontsize      : [int (12)]{optional}</code><br>
+Size in points of font in report graphics</p></li>
+<li><p><code>format      : [pdf|svg|png (svg)]{optional}</code><br>
+The graphic format in which the graphics get produced</p></li>
+<li><p><code>cabs_area    : [true|false ]{optional}</code><br>
+Produces the cabs_area plot between two RD curves. </p></li>
+<li><p><code>cabs_bitref_range    : [JSON_OBJECT ]{optional}</code><br>
+Dictonary that specifies the bitrate ranges where the CABSscore calculation is valid per squence. For example:</p></li>
+</ul><div class="highlight highlight-javascript"><pre><span class="p">...</span>
+            <span class="s2">"cabs_bitref_range"</span> <span class="o">:</span> <span class="p">{</span>
+                <span class="s2">"foreman4k"</span> <span class="o">:</span> <span class="p">[</span><span class="mi">2500</span><span class="p">,</span><span class="mi">4000</span><span class="p">],</span>
+                <span class="s2">"coastguard4k"</span> <span class="o">:</span><span class="p">[</span><span class="mi">1000</span><span class="p">,</span><span class="mi">4000</span><span class="p">],</span> 
+                <span class="s2">"suzie4k"</span> <span class="o">:</span> <span class="p">[</span><span class="mi">2500</span><span class="p">,</span><span class="mi">4000</span><span class="p">],</span>
+                <span class="s2">"cactus4k"</span> <span class="o">:</span> <span class="p">[</span><span class="mi">3000</span><span class="p">,</span><span class="mi">5000</span><span class="p">],</span>
+                <span class="s2">"mobile4k"</span> <span class="o">:</span> <span class="p">[</span><span class="mi">2500</span><span class="p">,</span><span class="mi">4000</span><span class="p">]</span>
+            <span class="p">}</span>
+<span class="p">...</span>
+</pre></div>
+
+<p>Defines the <code>bitref_range</code> per sequence</p>
+
+<ul>
+<li><p><code>metric    : [ssim|psnr ]{optional}</code><br>
+Metric to be used for the report</p></li>
+<li><p><code>seqref    : [JSON_OBJECT ]{optional}</code><br>
+If defined, defines the points of reference for every metric that will be used to calculate bitrate savings on graphics. Also, this is used to automatically calculate CABSscore using this point of reference to figure out the worst performing RD curve to which other curves CABSscore will be calculated against. An example:</p></li>
+</ul><div class="highlight highlight-javascript"><pre><span class="p">...</span>
+            <span class="s2">"metric"</span> <span class="o">:</span> <span class="s2">"ssim"</span><span class="p">,</span>
+            <span class="s2">"seqref"</span> <span class="o">:</span> <span class="p">{</span>
+                <span class="s2">"foreman4k"</span> <span class="o">:</span> <span class="mf">0.99</span><span class="p">,</span>
+                <span class="s2">"coastguard4k"</span> <span class="o">:</span> <span class="mf">0.94</span><span class="p">,</span>
+                <span class="s2">"suzie4k"</span> <span class="o">:</span> <span class="mf">0.994</span><span class="p">,</span>
+                <span class="s2">"cactus4k"</span> <span class="o">:</span> <span class="mf">0.991</span><span class="p">,</span>
+                <span class="s2">"mobile4k"</span> <span class="o">:</span> <span class="mf">0.990</span>
+
+            <span class="p">}</span>
+<span class="p">...</span>
+</pre></div>
+
+<p>This defines the points of reference for SSIM metric for every sequence.</p>
+
+<h2>
 <a name="user-content-requirements" class="anchor" href="#requirements" aria-hidden="true"><span class="octicon octicon-link"></span></a>Requirements</h2>
 
 <ul>

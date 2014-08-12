@@ -142,17 +142,83 @@ You use this codec pack adding:
 * **bitrate** this is the sweep parameter that generates streams of different size
 
 ##Configuration options##
-**keeprecon** [true|false]{optional,global,run}
-: if true directs the codec pack to not delete the temporary yuv reconstructed sequences  
+Here are a few of the configuration options you can use. The format of specification is like the following:  
+```property : [values: (default)]{optional|required}```  
+###Run options###
 
-**frame_count** [int]{optional,global,run}
-: limits the number of frames to be encoded to the int number specified
+* ```keeprecon      : [true|false (false)]{optional}```  
+If true directs the codec pack to not delete the temporary yuv reconstructed sequences  
 
-**ignore** [true|false]{optional,run}
-: makes the configuration parser to ignore this particular configuration. It is sometimes useful while working on a setup to disable a particular set of configurations in the file. Setting "ignore":true, will achieve the effect of ignoring the selected configuration temporarily.
+* ```frame_count   : [int (seq_frame_count)]{optional}```  
+limits the number of frames to be encoded to the int number specified
 
-**clobber** [true|false]{optional,run}
-: deletes the destination directory of the run. Use this if you are having problems with specific runs and you want to start from fresh.
+* ```ignore    :[true|false (false)]{optional}```  
+makes the configuration parser to ignore this particular configuration. It is sometimes useful while working on a setup to disable a particular set of configurations in the file. Setting "ignore":true, will achieve the effect of ignoring the selected configuration temporarily.
+
+* ```clobber   : [true|false (false)]{optional}```  
+deletes the destination directory of the run. Use this if you are having problems with specific runs and you want to start from fresh. For example:   
+```javascript  
+{
+        "seq" : ["foreman4k","coastguard4k","cactus4k","mobile4k","suzie4k"],
+        "codec" : ["x264"],
+        "bitrate_range" : [1000,5000,250],
+        "preset" : ["medium"],
+        "ignore" : true,
+        "clobber" : true
+}
+```   
+Given ```ignore``` is set to true this configuration section will be ignored until you remove the parameter or set it to false. If set to false, it will also clobber the existing directory before doing every run.
+###Reporting options###
+The reports section has a defaults section that gets inherited by all others section. 
+
+* ```res      : [int X int (1600x1200)]{optional}```  
+The resolution of the report graphics
+
+* ```fontsize      : [int (12)]{optional}```  
+Size in points of font in report graphics
+
+* ```format      : [pdf|svg|png (svg)]{optional}```  
+The graphic format in which the graphics get produced
+
+* ```cabs_area    : [true|false ]{optional}```  
+Produces the cabs_area plot between two RD curves. 
+
+* ```cabs_bitref_range    : [JSON_OBJECT ]{optional}```  
+Dictonary that specifies the bitrate ranges where the CABSscore calculation is valid per squence. For example:
+```javascript
+...
+            "cabs_bitref_range" : {
+                "foreman4k" : [2500,4000],
+                "coastguard4k" :[1000,4000], 
+                "suzie4k" : [2500,4000],
+                "cactus4k" : [3000,5000],
+                "mobile4k" : [2500,4000]
+            }
+...
+```
+Defines the ```bitref_range``` per sequence
+
+* ```metric    : [ssim|psnr ]{optional}```  
+Metric to be used for the report
+
+* ```seqref    : [JSON_OBJECT ]{optional}```  
+If defined, defines the points of reference for every metric that will be used to calculate bitrate savings on graphics. Also, this is used to automatically calculate CABSscore using this point of reference to figure out the worst performing RD curve to which other curves CABSscore will be calculated against. An example:
+```javascript
+...
+            "metric" : "ssim",
+            "seqref" : {
+                "foreman4k" : 0.99,
+                "coastguard4k" : 0.94,
+                "suzie4k" : 0.994,
+                "cactus4k" : 0.991,
+                "mobile4k" : 0.990
+
+            }
+...
+```
+This defines the points of reference for SSIM metric for every sequence.
+
+
 
 ##Requirements##
 * **python3** was used to write CODECbench so you'll require a python3 install
