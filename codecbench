@@ -46,8 +46,8 @@ class PythonObjectEncoder(json.JSONEncoder):
             return json.JSONEncoder.default(self, obj)
         return {'_python_object': ''}
 
-def objdump(obj):
-    return json.dumps(obj, cls=PythonObjectEncoder, sort_keys=True, skipkeys=True, indent=4, separators=(',',': '))
+def objdump(obj, id=4):
+    return json.dumps(obj, cls=PythonObjectEncoder, sort_keys=True, skipkeys=True, indent=id, separators=(',',': '))
                         
 
 class CBError(Exception):
@@ -72,6 +72,31 @@ class Sequence:
     def __str__(self):
         return self.desc
     
+
+def do_video_metrics(clines=None,**pars):
+    import subprocess
+    
+    #retrieve metrics
+    command = "{vm} -a {input} -b {reconfile} -m psnr,ssim -w {width} -h {height} -v -x {frame_count}".format(**pars).split()
+    if clines:
+        clines.append(command)
+    mout = subprocess.check_output(command).decode('utf-8')
+        
+    vmregex = lambda metric : "(\d+)\({0}\):\s(\S+)\s+Y:(\S+)\s+U:(\S+)\s+V:(\S+)".format(metric)
+            
+    frame_metrics = {}
+    for metric in ['psnr','ssim']:
+        matches = re.compile(vmregex(metric)).findall(mout)
+        if(len(matches)!=pars['frame_count']):
+            raise Exception("incorrect video metrics frame count for {0}".format(metric))
+        # example of match: [(u'290', u'37.353453', u'35.218697', u'41.111969', u'42.133961'), ...
+        (f,g,y,u,v) = zip(*matches)
+        frame_metrics[metric] = {'g': [float(val) for val in g], 'y': [float(val) for val in y], 'u': [float(val) for val in u], 'v': [float(val) for val in v] } 
+            
+    psnr = re.compile("psnr: (.+)$", re.MULTILINE ).search(mout).group(1) 
+    ssim = re.compile("ssim: (.+)$", re.MULTILINE ).search(mout).group(1)
+    return {'psnr':float(psnr), 'ssim':float(ssim), 'frame_metrics':frame_metrics} 
+
     
 def file_todataurl(file):
     import base64
@@ -165,7 +190,8 @@ def expand_runs(gconf, testconfig):
         run['tools'] = {'vm': os.path.abspath(native_root+'video_metrics'+exe), \
                 'vgtmpeg' : os.path.abspath(native_root+'vgtmpeg'+exe), \
                 'mp4box' :  os.path.abspath(native_root+'MP4Box'+exe), \
-                'h265refdec' : os.path.abspath(native_root+'TAppDecoder'+exe) }
+                'h265refdec' : os.path.abspath(native_root+'TAppDecoder'+exe), \
+                'do_video_metrics' : do_video_metrics }
 
         if not os.path.isfile(run['tools']['vm']):
             print("can't find video metrics for this platform: "+ run['tools']['vm'])
@@ -285,7 +311,7 @@ def do_run(run, gconf,sem, index):
                 #json.dumps can't easily handle non trivial json values, so we remove the handler from serialization
                 runs = run.copy()
                 #runs['codec']=None
-                rfile.write(json.dumps(runs, cls=PythonObjectEncoder, sort_keys=True, skipkeys=True, indent=4, separators=(',',': ')))
+                rfile.write(objdump(runs))
             print("done {0}".format(name))
         else:
             print("using existing run at " + runinfo_path)
