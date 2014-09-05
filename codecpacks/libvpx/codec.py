@@ -7,6 +7,7 @@ Created on Jun 11, 2014
 import subprocess
 import os
 import re
+import time
 
 def libvpx_handler(run):
     """ does a run. returns metric info 
@@ -43,7 +44,9 @@ def libvpx_handler(run):
         command = "{encoder} -v --cpu-used={cpu}  -p 1  --fps={num}/{den} --target-bitrate={bitrate} --codec={codec} -w {width} -h {height} -o {output} --limit={frame_count} {input}".format(**pars).split()
         clines.append(command)
         # do encode
+        startenc = time.time()
         out = subprocess.check_output(command,stderr=subprocess.STDOUT).decode("utf-8")
+        stopenc = time.time()
         
         #sample last line
         #Pass 1/1 frame  300/300   136845B    3649b/f  109476b/s   23550 ms (12.74 fps)[K
@@ -57,22 +60,16 @@ def libvpx_handler(run):
         clines.append(command)
         out = subprocess.check_output(command)
         
-        #retrieve metrics
-        command = "{vm} -a {input} -b {reconfile} -m psnr,ssim -w {width} -h {height} -v -x {frame_count}".format(**pars).split()
-        clines.append(command)
-        mout = subprocess.check_output(command).decode('utf-8')
+        run['results'] = {'totalbytes': int(totalbytes), 'bitsperframe': int(bitsperframe), 'bps':int(bps), 'encodetime_in_s': (stopenc-startenc), 'clines': clines}
         
-        psnr = re.compile("psnr: (.+)$", re.MULTILINE ).search(mout).group(1) 
-        ssim = re.compile("ssim: (.+)$", re.MULTILINE ).search(mout).group(1) 
+        
+        #do video metrics
+        metrics = run['tools']['do_video_metrics'](clines, **pars)
+        run['results'].update(metrics)
         
         #delete recon if needed
         os.remove(run['recon']) if not run['keeprecon'] else None
         
-        #print("psnr: {0}    ssim: {1}".format(psnr,ssim))
-        run['results'] = {'psnr':float(psnr), 'ssim':float(ssim), 'totalbytes': int(totalbytes), 'bitsperframe': int(bitsperframe), 'bps':int(bps), 'clines':clines }
-        
-        
-            
         
     except subprocess.CalledProcessError as e:
         print (e.output)

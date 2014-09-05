@@ -29,6 +29,7 @@
 # 
 
 
+import time
 import json
 import os
 import threading
@@ -305,7 +306,10 @@ def do_run(run, gconf,sem, index):
             if not callable(hdlr):
                 print("could not find handlder for codec '{1}'".format(run['codec']['nickname']))
             else:
+                starttime = time.time()
                 hdlr(run)
+                stoptime = time.time()
+                run['runtime_in_s'] = stoptime - starttime
             
             with open(run['base_path']+'runinfo.json','w') as rfile:
                 #json.dumps can't easily handle non trivial json values, so we remove the handler from serialization
