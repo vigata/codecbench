@@ -27,7 +27,7 @@ def libvpx_handler(run):
             'den' : run['seq']['fpsden'],
             'bitrate' : run['config']['bitrate'],
             'output' : run['output'] +".webm",
-            'cpu' : run['config'].get('cpu', 16),
+            'cpu' : run['config'].get('cpu', 8),
             'input' : run['seq']['abspath'],
             'encoder' : os.path.abspath(root + "vpxenc"),
             'decoder' : os.path.abspath(root + "vpxdec"),
@@ -81,7 +81,7 @@ codec = {
     "profile": "libvpx",
     "out_extension": "webm",
     "handler" : libvpx_handler,
-    "supported_pars" : {"bitrate":1000,"cpu":16,'libvpx_codec':'vp9'},
+    "supported_pars" : {"bitrate":1000,"cpu":8,'libvpx_codec':'vp9'},
     "ratesweep_pars" : ['bitrate']
 }
 
@@ -102,7 +102,10 @@ def init(gconf):
         search = re.compile("vp9.+(v\d+\..*)$", re.MULTILINE).search(err)
         vp9ver, = search.groups()
         
-        version = "vp8: {0}, vp9: {1}".format(vp8ver, vp9ver)
+        search = re.compile("vp10.+(v\d+\..*)$", re.MULTILINE).search(err)
+        vp10ver, = search.groups()
+        
+        version = "vp8: {0}, vp9: {1}, vp10: {2}".format(vp8ver, vp9ver, vp10ver)
         version_long = version
     except Exception as e:
         version = "?"

@@ -8,8 +8,8 @@
         "seq" : ["foremancif"],
         "codec" : ["libvpx"],
         "bitrate_range" : [50,1000,100],
-        "libvpx_codec" : "vp9",
-        "cpu" : 16
+        "libvpx_codec" : "vp10",
+        "cpu" : 8
     }
     ],
     "reports" : {
