@@ -5,11 +5,11 @@
     "frame_count" : 300,
     "runs" : [
     {
-        "seq" : ["foremancif"],
+        "seq" : ["parkrun"],
         "codec" : ["libvpx"],
-        "bitrate_range" : [50,1000,100],
-        "libvpx_codec" : "vp10",
-        "cpu" : 8
+        "bitrate_range" : [250,2000,250],
+        "libvpx_codec" : ["vp9","vp10"],
+        "cpu" : 0
     }
     ],
     "reports" : {
@@ -17,7 +17,7 @@
             "res" : "800x600",
             "fontsize" : 8,
             "format" : "svg",
-            "bitref_range" : [200,800],
+            "bitref_range" : [1000,2500],
             "cabs_area" : true
         },
         "reports": [

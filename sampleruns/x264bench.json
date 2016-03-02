@@ -8,14 +8,14 @@
         "codec" : ["x264"],
         "bitrate" : [50,100],
         "bitrate_range" : [50,1000,50],
-        "preset" : ["ultrafast"]
+        "preset" : ["ultrafast","fast","medium"]
     }
     ],
     "reports" : {
         "defaults" : {
             "res" : "800x600",
             "fontsize" : 8,
-            "format" : "pdf",
+            "format" : "png",
             "bitref_range" : [200,800],
             "cabs_area" : true
         },
