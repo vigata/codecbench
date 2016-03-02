@@ -730,7 +730,7 @@ machine_map = {'amd64':'x86_64'}
 def main(argv):
     gconf = {'root': os.path.abspath( os.path.dirname( __file__ )), 'sep' : os.sep, \
             'platform': platform.system().lower()+"-"+ machine_map.get(platform.machine().lower(), platform.machine().lower()), \
-            'version' : '0.4.10', 'author' : 'Alberto Vigata', 'year': 2014}
+            'version' : '0.4.11', 'author' : 'Alberto Vigata', 'year': 2016}
     
 
     print("This is codecbench {version} [{author} {year}] starting up on {platform}".format(**gconf))
