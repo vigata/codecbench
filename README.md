@@ -116,35 +116,35 @@ This results in the following:
 ![he](docs/images/cabs_report.png)
 
 The green area is the CABS area. Its the area between 400 and 1000 kbps from the reference curve (medium preset) and the bitrate savings for every point. The average bitrate savings in all this point is unsurprisingly 27% so our previous measurement at just 40dB was quite close to the real CABSscore.
-##Codec Packs##
+## Codec Packs ##
 A codec pack extends CODECbench to support a particular codec. From a user point of view they are just folders with files you can drop in into the 'codecpacks' folder. When you run CODECbench it should automatically detect it and be ready for use. Like sequences, codec packs are identified with a nickname. For example 'x264', 'x265' or 'libvpx'. You use their nickname to refer to them in configuration files.
-###Writing your own codec pack###
+### Writing your own codec pack ###
 In its essense a codec pack is the binaries that form part of the encoder and a bit of python glue to interact with CODECbench. On startup CODECbench looks for a 'codec.py' file inside the folders of the 'codecpacks' directory. If present file is loaded and used for interaction with the codecpack. Take a look at the provided codec packs if you want to make your own, it should be relatively simple.
-###Provided codec packs###
+### Provided codec packs ###
 Some codec packs are provided as default:
-####x264####
+#### x264 ####
 You use this codec pack adding:
 * **codec** parameter with value 'x264'
 * **preset** parameter with one of the x264 command line presets (ultrafast,fast,medium,slow,placebo ...)
 * **bitrate** this is the sweep parameter that generates streams of different size
 
-####x265####
+#### x265 ####
 You use this codec pack adding:
 * **codec** parameter with value 'x265'
 * **preset** parameter with one of the x265 command line presets (ultrafast,fast,medium,slow,placebo ...)
 * **bitrate** this is the sweep parameter that generates streams of different size
 
-####libvpx####
+#### libvpx ####
 You use this codec pack adding:
 * **codec** parameter with value 'libvpx'
 * **libvpx_codec** parameter telling the specific codec to use inside libvpx 'vp8' or 'vp9'
 * **cpu** parameter mapped to command line. 0 for slow, 1 for faster, ... 16 for realtime
 * **bitrate** this is the sweep parameter that generates streams of different size
 
-##Configuration options##
+## Configuration options ##
 Here are a few of the configuration options you can use. The format of specification is like the following:  
 ```property : [values: (default)]{optional|required}```  
-###Run options###
+### Run options ###
 
 * ```keeprecon      : [true|false (false)]{optional}```  
 If true directs the codec pack to not delete the temporary yuv reconstructed sequences  
@@ -220,11 +220,11 @@ This defines the points of reference for SSIM metric for every sequence.
 
 
 
-##Requirements##
+## Requirements ##
 * **python3** was used to write CODECbench so you'll require a python3 install
 * **matplotlib, scipy and numpy** are required if you want to generate reports
 * **a codec pack for your native platform**, codec packs run natively and usually come with binaries to be run on most common platforms. A codec pack won't run if it doesn't provide native binaries for your platform
 
-##About me##
+## About me ##
 My name is Alberto Vigata and I love all things video engineering related. I've been working on them profesionally for a while. You can [check my personal profile on Linked In](https://www.linkedin.com/in/vigata)
 

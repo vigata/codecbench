@@ -391,6 +391,8 @@ def reports_rdcurve_create_plot(seqplots, report, repopt ):
 
     import matplotlib.pyplot as plt
     
+    #rd curve creation
+    rdcurves = {}
     
     ret = {'ref_plotid':None}
     metric = report['metric']
@@ -418,6 +420,15 @@ def reports_rdcurve_create_plot(seqplots, report, repopt ):
             x,y = zip(*p)
             seqplots[seq][plotid]['extrap'] = extrapolate(x,y)
             seqplots[seq][plotid]['extrap_inv'] = extrapolate(y,x)
+            
+            #this assumes only one plot per seq
+            if(metric=='ssim'):
+                rdcurves[seq] = {}
+                rdcurves[seq]['rdfunc'] = rcfunc(x, y)
+                rdcurves[seq]['rdfuncinv'] = rcfunc(y, x)
+                rdcurves[seq]['w'] = seqplots[seq][plotid]['w'] 
+                rdcurves[seq]['h'] = seqplots[seq][plotid]['h'] 
+            
 
             x = [n/1000 for n in x]
             line, = plt.plot(x,y, 'o-', label=plotid, linewidth=2)
@@ -488,6 +499,26 @@ def reports_rdcurve_create_plot(seqplots, report, repopt ):
         plt.savefig(imgfile)
         htmlout += "<img src='{0}'/>\n".format(file_todataurl(imgfile))
         
+    #rdcurve logic here
+    rds = sorted( rdcurves.values(), key = lambda a : int(a['w'])*int(a['h']), reverse = True )
+    
+    if 'minqual' in report:
+        #minqual is a scalar or a list. 
+        minquals = report['minqual'] if type(report['minqual']) is list else [report['minqual']]
+        htmlout += "<p>"
+        for minqual in minquals:
+            for i in range(0,len(rds)):
+                brswitch = rds[i]['rdfuncinv'](minqual)
+                if(i<len(rds)-1):
+                    nextres_qual = rds[i+1]['rdfunc'](brswitch)
+                    htmlout += ("Bitrate switch for {0}x{1}@{2} at {3} bps. {4}x{5} qual at br is {6}<br>".format(rds[i]['w'], rds[i]['h'], minqual, \
+                                                                                                  brswitch, rds[i+1]['w'], rds[i+1]['h'], nextres_qual ))
+                else: #rdcurve min resolution
+                    htmlout += ("Minimum bitrate for {0}x{1}@{2} at {3} bps.<br>".format(rds[i]['w'], rds[i]['h'], minqual, brswitch)) 
+
+            htmlout += "</br>"
+        htmlout += "</p>"
+        
     repopt['htmlout'] = htmlout   
     return ret
     #show()
@@ -495,6 +526,7 @@ def reports_rdcurve_create_plot(seqplots, report, repopt ):
        # with open("fig.html","w") as out:
        #     out.write( mpld3.fig_to_html(fig) )
        
+#this extrapolate function extends interp1d over the range
 def extrapolate(x,y):
     from scipy.interpolate import interp1d
     from scipy import arange, array, exp
@@ -515,6 +547,27 @@ def extrapolate(x,y):
         return array(list(map(pointwise, array(xs))))
 
     return ufunclike
+
+def rcfunc(x,y):
+    from scipy.interpolate import interp1d
+    from scipy import arange, array, exp
+    import numpy as np
+    import scipy
+
+    f_i = interp1d(x,y)
+    xs = f_i.x
+    ys = f_i.y
+    f_i = scipy.interpolate.PchipInterpolator(x,y)
+
+    def pointwise(x):
+        if x < xs[0]:
+            return np.asscalar(ys[0]+(x-xs[0])*(ys[1]-ys[0])/(xs[1]-xs[0]))
+        elif x > xs[-1]:
+            return np.asscalar(ys[-1]+(x-xs[-1])*(ys[-1]-ys[-2])/(xs[-1]-xs[-2]))
+        else:
+            return np.asscalar(f_i(x))
+
+    return pointwise
        
 def report_create_cabs(seqs, report, ref_plotid=None, repopt=None ):
     if not ref_plotid:
@@ -637,6 +690,8 @@ def report_create_ratedistortion(gconf, runs, report  ):
         seqs[seqname][plotid]['y'].append(run['results'][metric])
         seqs[seqname][plotid]['plotid'] = plotid
         seqs[seqname][plotid]['title'] = Sequence(run['seq']).plotstr() + " " + metric.upper()
+        seqs[seqname][plotid]['w'] = run['seq']['w']
+        seqs[seqname][plotid]['h'] = run['seq']['h']
         
         run['plotid'] = plotid
     
@@ -703,7 +758,7 @@ def reports_generate(gconf,runconfig):
         r.update(defaults)
         r.update(report)
 
-        #TODO implment 'type' of report
+        #TODO implement 'type' of report
         #TODO implement 'seq' selector on report
         if not 'metric' in r:
             continue
@@ -730,7 +785,7 @@ machine_map = {'amd64':'x86_64'}
 def main(argv):
     gconf = {'root': os.path.abspath( os.path.dirname( __file__ )), 'sep' : os.sep, \
             'platform': platform.system().lower()+"-"+ machine_map.get(platform.machine().lower(), platform.machine().lower()), \
-            'version' : '0.4.11', 'author' : 'Alberto Vigata', 'year': 2016}
+            'version' : '0.4.12', 'author' : 'Alberto Vigata', 'year': 2018}
     
 
     print("This is codecbench {version} [{author} {year}] starting up on {platform}".format(**gconf))

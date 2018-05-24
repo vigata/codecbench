@@ -1,0 +1,63 @@
+{
+    "sequence_dirs": [
+        "../seq"
+    ],
+    "codec_dirs": [
+        "../codecs"
+    ],
+    "keeprecon": false,
+    "runs": [
+        {
+            "seq": [
+                "coastguard_320_240",
+                "coastguard_1280_720",
+                "coastguard_640_480",
+                "coastguard_1920_1080"
+            ],
+            "codec": [
+                "x264"
+            ],
+            "bitrate": [
+                50,
+                100
+            ],
+            "bitrate_range": [
+                50,
+                3500,
+                250
+            ],
+            "preset": [
+                "fast"
+            ]
+        }
+    ],
+    "reports": {
+        "defaults": {
+            "res": "800x600",
+            "fontsize": 8,
+            "format": "png",
+            "bitref_range": [
+                200,
+                800
+            ],
+            "cabs_area": true
+        },
+        "reports": [
+            {
+                "ref": 0.98,
+                "metric": "ssim",
+                "minqual" : [0.8, 0.9, 0.95],
+                "seqfef": {
+                    "foremancif": 0.97
+                }
+            },
+            {
+                "ref": 40,
+                "metric": "psnr",
+                "seqfef": {
+                    "foremancif": 40
+                }
+            }
+        ]
+    }
+}
