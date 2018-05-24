@@ -52,7 +52,7 @@ You don't have to worry about configuring the codecs at all. CODECbench is modul
 Sequences are similar. You can drop prepared yuv sequences on the sequences directory and use them with their nickname. All the details about formats, frame sizes and frame rates are handled automatically.
 
 ## Optimal Bitrate Resolution Switching ##
-CODECbench can calculate what is the optimal bitrate at which to switch resolutions to keep subjective video quality constant.  In order to calculate the bitrate switching points a subjective metric like 'ssim' must be used. 
+CODECbench can calculate what is the optimal bitrate at which to switch resolutions to keep subjective video quality constant.  In order to calculate the bitrate switching points an absolute metric like 'ssim' must be used. 
 ```javascript
 {
     ...
