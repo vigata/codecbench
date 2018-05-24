@@ -51,6 +51,51 @@ You don't have to worry about configuring the codecs at all. CODECbench is modul
 
 Sequences are similar. You can drop prepared yuv sequences on the sequences directory and use them with their nickname. All the details about formats, frame sizes and frame rates are handled automatically.
 
+## Optimal Bitrate Resolution Switching ##
+CODECbench can calculate what is the optimal bitrate at which to switch resolutions to keep subjective video quality constant.  In order to calculate the bitrate switching points a subjective metric like 'ssim' must be used. 
+```javascript
+{
+    ...
+    "reports" : {
+        ...
+        "reports": [
+        {
+            "ref" : 0.95,
+            "metric" : "ssim",
+            "minqual": [0.8, 0.9, 0.95] #minimum quality required. Scalar values are acceptable too
+        }
+    ]
+}
+```
+Adding a `minqual` parameter to the ssim report will force the optimal bitrate resolution switching calculation. The parameter is either a scalar or a list of values. Each value corresponds to the minimum quality desired at any moment during the operation of the encoder. There's a sample report configuration provided on `/sampleruns/multires_x264_bench.json` The result report looks like this:
+```
+Example result:
+
+Bitrate switch for 1920x1080@0.8 at 597542.7994113566 bps. 1280x720 qual at br is 0.8585469369729225
+Bitrate switch for 1280x720@0.8 at 326301.5568897185 bps. 640x480 qual at br is 0.8677659265273029
+Bitrate switch for 640x480@0.8 at 155525.33386919688 bps. 320x240 qual at br is 0.8413981228251971
+Minimum bitrate for 320x240@0.8 at 66207.81197178511 bps.
+
+Bitrate switch for 1920x1080@0.9 at 1658351.3268310914 bps. 1280x720 qual at br is 0.9324741017417775
+Bitrate switch for 1280x720@0.9 at 989156.8165966908 bps. 640x480 qual at br is 0.9428834337863248
+Bitrate switch for 640x480@0.9 at 485318.3305768017 bps. 320x240 qual at br is 0.9349399124018616
+Minimum bitrate for 320x240@0.9 at 280510.36393845885 bps.
+
+Bitrate switch for 1920x1080@0.95 at 3857779.601799102 bps. 1280x720 qual at br is 0.9628820330960579
+Bitrate switch for 1280x720@0.95 at 2493719.9488699837 bps. 640x480 qual at br is 0.9737948824384565
+Bitrate switch for 640x480@0.95 at 1163040.4454250892 bps. 320x240 qual at br is 0.9714908213551666
+Minimum bitrate for 320x240@0.95 at 659464.021887705 bps.
+
+
+# for minimum quality of SSIM 0.95 encoder needs to be operated on
+# 659kbps - 1163kbps  at 320x240
+# 1163kbps - 2493kbps at 640x480
+# 2493kbps - 3857kbps     at 1280x720
+# 3857kbps and above  at 1920x1080
+ 
+```
+
+
 ## Reporting ##
 CODECbench wouldn't be very useful if it didn't give you information about the actual performance of the codec under test. Even after running all the runs you end with bitstreams and metrics information this is not terribly useful per se. CODECbench can then generate reports on that compiled data. To get reports add a report section to the configuration file:
 
@@ -116,6 +161,7 @@ This results in the following:
 ![he](docs/images/cabs_report.png)
 
 The green area is the CABS area. Its the area between 400 and 1000 kbps from the reference curve (medium preset) and the bitrate savings for every point. The average bitrate savings in all this point is unsurprisingly 27% so our previous measurement at just 40dB was quite close to the real CABSscore.
+
 ## Codec Packs ##
 A codec pack extends CODECbench to support a particular codec. From a user point of view they are just folders with files you can drop in into the 'codecpacks' folder. When you run CODECbench it should automatically detect it and be ready for use. Like sequences, codec packs are identified with a nickname. For example 'x264', 'x265' or 'libvpx'. You use their nickname to refer to them in configuration files.
 ### Writing your own codec pack ###
