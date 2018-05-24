@@ -111,6 +111,47 @@ running bitrate_200__codec_x265__preset_placebo__seq_foremancif__ 2/36
 <p>You don't have to worry about configuring the codecs at all. CODECbench is modular, and the codecs are provided to you (there are some installed by default) as 'codec packs'. Codec packs have all its needed to interact with CODECbench and you can just invoke them on the configuration file with their nickname, in the example above 'x265'. You just need to drop the codec pack in the 'codecpacks' folder for this to work.</p>
 <p>Sequences are similar. You can drop prepared yuv sequences on the sequences directory and use them with their nickname. All the details about formats, frame sizes and frame rates are handled automatically.</p>
 <h2>
+<a id="user-content-optimal-bitrate-resolution-switching" class="anchor" href="#optimal-bitrate-resolution-switching" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Optimal Bitrate Resolution Switching</h2>
+<p>CODECbench can calculate what is the optimal bitrate at which to switch resolutions to keep subjective video quality constant.  In order to calculate the bitrate switching points a subjective metric like 'ssim' must be used.</p>
+<div class="highlight highlight-source-js"><pre>{
+    <span class="pl-k">...</span>
+    <span class="pl-s"><span class="pl-pds">"</span>reports<span class="pl-pds">"</span></span> <span class="pl-k">:</span> {
+        <span class="pl-k">...</span>
+        <span class="pl-s"><span class="pl-pds">"</span>reports<span class="pl-pds">"</span></span><span class="pl-k">:</span> [
+        {
+            <span class="pl-s"><span class="pl-pds">"</span>ref<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">0.95</span>,
+            <span class="pl-s"><span class="pl-pds">"</span>metric<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>ssim<span class="pl-pds">"</span></span>,
+            <span class="pl-s"><span class="pl-pds">"</span>minqual<span class="pl-pds">"</span></span><span class="pl-k">:</span> [<span class="pl-c1">0.8</span>, <span class="pl-c1">0.9</span>, <span class="pl-c1">0.95</span>] #minimum quality <span class="pl-smi">required</span>. <span class="pl-smi">Scalar</span> values are acceptable too
+        }
+    ]
+}</pre></div>
+<p>Adding a <code>minqual</code> parameter to the ssim report will force the optimal bitrate resolution switching calculation. The parameter is either a scalar or a list of values. Each value corresponds to the minimum quality desired at any moment during the operation of the encoder. There's a sample report configuration provided on <code>/sampleruns/multires_x264_bench.json</code> The result report looks like this:</p>
+<pre><code>Example result:
+
+Bitrate switch for 1920x1080@0.8 at 597542.7994113566 bps. 1280x720 qual at br is 0.8585469369729225
+Bitrate switch for 1280x720@0.8 at 326301.5568897185 bps. 640x480 qual at br is 0.8677659265273029
+Bitrate switch for 640x480@0.8 at 155525.33386919688 bps. 320x240 qual at br is 0.8413981228251971
+Minimum bitrate for 320x240@0.8 at 66207.81197178511 bps.
+
+Bitrate switch for 1920x1080@0.9 at 1658351.3268310914 bps. 1280x720 qual at br is 0.9324741017417775
+Bitrate switch for 1280x720@0.9 at 989156.8165966908 bps. 640x480 qual at br is 0.9428834337863248
+Bitrate switch for 640x480@0.9 at 485318.3305768017 bps. 320x240 qual at br is 0.9349399124018616
+Minimum bitrate for 320x240@0.9 at 280510.36393845885 bps.
+
+Bitrate switch for 1920x1080@0.95 at 3857779.601799102 bps. 1280x720 qual at br is 0.9628820330960579
+Bitrate switch for 1280x720@0.95 at 2493719.9488699837 bps. 640x480 qual at br is 0.9737948824384565
+Bitrate switch for 640x480@0.95 at 1163040.4454250892 bps. 320x240 qual at br is 0.9714908213551666
+Minimum bitrate for 320x240@0.95 at 659464.021887705 bps.
+
+
+# for minimum quality of SSIM 0.95 encoder needs to be operated on
+# 659kbps - 1163kbps  at 320x240
+# 1163kbps - 2493kbps at 640x480
+# 2493kbps - 3857kbps     at 1280x720
+# 3857kbps and above  at 1920x1080
+ 
+</code></pre>
+<h2>
 <a id="user-content-reporting" class="anchor" href="#reporting" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Reporting</h2>
 <p>CODECbench wouldn't be very useful if it didn't give you information about the actual performance of the codec under test. Even after running all the runs you end with bitstreams and metrics information this is not terribly useful per se. CODECbench can then generate reports on that compiled data. To get reports add a report section to the configuration file:</p>
 <div class="highlight highlight-source-js"><pre>{
