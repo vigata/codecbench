@@ -1,3 +1,2 @@
 #!/bin/sh
-
 grip --export

@@ -76,9 +76,9 @@
 <a id="user-content-codecbench" class="anchor" href="#codecbench" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>CODECbench</h1>
 <h2>
 <a id="user-content-an-open-source-video-codec-benchmarking-tool" class="anchor" href="#an-open-source-video-codec-benchmarking-tool" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>An open source video codec benchmarking tool</h2>
-<p><a href="docs/images/cabs_logo.png" target="_blank"><img src="docs/images/cabs_logo.png" alt="he" style="max-width:100%;"></a></p>
+<p><a href="docs/images/cabs_logo.png" target="_blank" rel="noopener noreferrer"><img src="docs/images/cabs_logo.png" alt="he" style="max-width:100%;"></a></p>
 <p>CODECbench is a video codec comparison tool. It allows you to analyze how one video codec performs against another, or with itself using different settings</p>
-<p>You start by defining what stuff you want to analyze. For example, let's compare how x265 performs with its different presets 'medium' and 'placebo'. For this we will create a JSON configuration like the following:</p>
+<p>You start by defining what is it you want to analyze. For example, let's compare how x265 performs with its different presets 'medium' and 'placebo'. For this we will create a JSON configuration like the following:</p>
 <div class="highlight highlight-source-js"><pre><span class="pl-c"><span class="pl-c">//</span> we'll keep this on a file called x265bench.json</span>
 {
   <span class="pl-s"><span class="pl-pds">"</span>keeprecon<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">false</span>,
@@ -112,7 +112,7 @@ running bitrate_200__codec_x265__preset_placebo__seq_foremancif__ 2/36
 <p>Sequences are similar. You can drop prepared yuv sequences on the sequences directory and use them with their nickname. All the details about formats, frame sizes and frame rates are handled automatically.</p>
 <h2>
 <a id="user-content-optimal-bitrate-resolution-switching" class="anchor" href="#optimal-bitrate-resolution-switching" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Optimal Bitrate Resolution Switching</h2>
-<p>CODECbench can calculate what is the optimal bitrate at which to switch resolutions to keep subjective video quality constant.  In order to calculate the bitrate switching points a subjective metric like 'ssim' must be used.</p>
+<p>CODECbench can calculate what is the optimal bitrate at which to switch resolutions to keep subjective video quality constant.  In order to calculate the bitrate switching points an absolute metric like 'ssim' must be used.</p>
 <div class="highlight highlight-source-js"><pre>{
     <span class="pl-k">...</span>
     <span class="pl-s"><span class="pl-pds">"</span>reports<span class="pl-pds">"</span></span> <span class="pl-k">:</span> {
@@ -186,9 +186,9 @@ Minimum bitrate for 320x240@0.95 at 659464.021887705 bps.
 } 
 }</pre></div>
 <p>This will produce the following SSIM report on the reports folder. The 'ref' marker on the reports array can be used for CODECbench to calculate the bitrate savings at a specific quality point. In the example we are using 0.95 for SSIM point at which the placebo configuration gives 26% bitrate savings.</p>
-<p><a href="docs/images/ssim_report.png" target="_blank"><img src="docs/images/ssim_report.png" alt="he" style="max-width:100%;"></a></p>
+<p><a href="docs/images/ssim_report.png" target="_blank" rel="noopener noreferrer"><img src="docs/images/ssim_report.png" alt="he" style="max-width:100%;"></a></p>
 <p>The configuration file also adds a PSNR report with a reference of 40. This is the result:
-<a href="docs/images/psnr_report.png" target="_blank"><img src="docs/images/psnr_report.png" alt="he" style="max-width:100%;"></a></p>
+<a href="docs/images/psnr_report.png" target="_blank" rel="noopener noreferrer"><img src="docs/images/psnr_report.png" alt="he" style="max-width:100%;"></a></p>
 <p>Using PSNR gives us also 27% bitrate savings for a value of 40dB, not bad. We can do better though in our analysis. CODECbench can also automatically calculate the <a href="http://codecbench.nelalabs.com/cabs" rel="nofollow">CABSscore</a> for this configuration. <a href="http://codecbench.nelalabs.com/cabs" rel="nofollow">Visit this page to learn more about the CABSscore</a> . To get a CABSscore, we need to define a bitrate of interest so we'll go for a range between 400 and 1000 kbps for foreman CIF. Add a 'bitrate_range' parameter in the config file and also set the report to show the 'cabs_area' like this:</p>
 <div class="highlight highlight-source-js"><pre> <span class="pl-k">...</span>
      <span class="pl-s"><span class="pl-pds">"</span>reports<span class="pl-pds">"</span></span> <span class="pl-k">:</span> {
@@ -203,7 +203,7 @@ Minimum bitrate for 320x240@0.95 at 659464.021887705 bps.
           {
 <span class="pl-k">...</span></pre></div>
 <p>This results in the following:</p>
-<p><a href="docs/images/cabs_report.png" target="_blank"><img src="docs/images/cabs_report.png" alt="he" style="max-width:100%;"></a></p>
+<p><a href="docs/images/cabs_report.png" target="_blank" rel="noopener noreferrer"><img src="docs/images/cabs_report.png" alt="he" style="max-width:100%;"></a></p>
 <p>The green area is the CABS area. Its the area between 400 and 1000 kbps from the reference curve (medium preset) and the bitrate savings for every point. The average bitrate savings in all this point is unsurprisingly 27% so our previous measurement at just 40dB was quite close to the real CABSscore.</p>
 <h2>
 <a id="user-content-codec-packs" class="anchor" href="#codec-packs" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Codec Packs</h2>
@@ -257,19 +257,19 @@ Minimum bitrate for 320x240@0.95 at 659464.021887705 bps.
 <a id="user-content-run-options" class="anchor" href="#run-options" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Run options</h3>
 <ul>
 <li>
-<p><code>keeprecon : [true|false (false)]{optional}</code><br>
+<p><code>keeprecon      : [true|false (false)]{optional}</code><br>
 If true directs the codec pack to not delete the temporary yuv reconstructed sequences</p>
 </li>
 <li>
-<p><code>frame_count : [int (seq_frame_count)]{optional}</code><br>
+<p><code>frame_count   : [int (seq_frame_count)]{optional}</code><br>
 limits the number of frames to be encoded to the int number specified</p>
 </li>
 <li>
-<p><code>ignore :[true|false (false)]{optional}</code><br>
+<p><code>ignore    :[true|false (false)]{optional}</code><br>
 makes the configuration parser to ignore this particular configuration. It is sometimes useful while working on a setup to disable a particular set of configurations in the file. Setting "ignore":true, will achieve the effect of ignoring the selected configuration temporarily.</p>
 </li>
 <li>
-<p><code>clobber : [true|false (false)]{optional}</code><br>
+<p><code>clobber   : [true|false (false)]{optional}</code><br>
 deletes the destination directory of the run. Use this if you are having problems with specific runs and you want to start from fresh. For example:</p>
 </li>
 </ul>
@@ -286,23 +286,23 @@ deletes the destination directory of the run. Use this if you are having problem
 The reports section has a defaults section that gets inherited by all others section.</p>
 <ul>
 <li>
-<p><code>res : [int X int (1600x1200)]{optional}</code><br>
+<p><code>res      : [int X int (1600x1200)]{optional}</code><br>
 The resolution of the report graphics</p>
 </li>
 <li>
-<p><code>fontsize : [int (12)]{optional}</code><br>
+<p><code>fontsize      : [int (12)]{optional}</code><br>
 Size in points of font in report graphics</p>
 </li>
 <li>
-<p><code>format : [pdf|svg|png (svg)]{optional}</code><br>
+<p><code>format      : [pdf|svg|png (svg)]{optional}</code><br>
 The graphic format in which the graphics get produced</p>
 </li>
 <li>
-<p><code>cabs_area : [true|false ]{optional}</code><br>
+<p><code>cabs_area    : [true|false ]{optional}</code><br>
 Produces the cabs_area plot between two RD curves.</p>
 </li>
 <li>
-<p><code>cabs_bitref_range : [JSON_OBJECT ]{optional}</code><br>
+<p><code>cabs_bitref_range    : [JSON_OBJECT ]{optional}</code><br>
 Dictonary that specifies the bitrate ranges where the CABSscore calculation is valid per squence. For example:</p>
 </li>
 </ul>
@@ -318,11 +318,11 @@ Dictonary that specifies the bitrate ranges where the CABSscore calculation is v
 <p>Defines the <code>bitref_range</code> per sequence</p>
 <ul>
 <li>
-<p><code>metric : [ssim|psnr ]{optional}</code><br>
+<p><code>metric    : [ssim|psnr ]{optional}</code><br>
 Metric to be used for the report</p>
 </li>
 <li>
-<p><code>seqref : [JSON_OBJECT ]{optional}</code><br>
+<p><code>seqref    : [JSON_OBJECT ]{optional}</code><br>
 If defined, defines the points of reference for every metric that will be used to calculate bitrate savings on graphics. Also, this is used to automatically calculate CABSscore using this point of reference to figure out the worst performing RD curve to which other curves CABSscore will be calculated against. An example:</p>
 </li>
 </ul>

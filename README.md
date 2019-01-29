@@ -6,7 +6,7 @@ CODECbench
 
 CODECbench is a video codec comparison tool. It allows you to analyze how one video codec performs against another, or with itself using different settings
 
-You start by defining what stuff you want to analyze. For example, let's compare how x265 performs with its different presets 'medium' and 'placebo'. For this we will create a JSON configuration like the following:
+You start by defining what is it you want to analyze. For example, let's compare how x265 performs with its different presets 'medium' and 'placebo'. For this we will create a JSON configuration like the following:
 
 ```javascript
 // we'll keep this on a file called x265bench.json
