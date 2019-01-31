@@ -6,9 +6,16 @@
     {
         "seq" : ["foremancif"],
         "codec" : ["aom"],
-        "bitrate_range" : [500,1000,2000],
-        "cpu" : [8],
+        "bitrate_range" : [ 50,1500,100],
+        "cpu" : [0,8],
         "aom_codec" : ["av1"],
+        "ignore" : false,
+        "clobber" : false
+    },
+    {
+        "seq" : ["foremancif"],
+        "codec" : ["x264","x265"],
+        "bitrate_range" : [ 50,1500,100],
         "ignore" : false,
         "clobber" : false
     }
