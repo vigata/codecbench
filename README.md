@@ -4,7 +4,7 @@ CODECbench
 ## An open source video codec benchmarking tool ##
 ![he](docs/images/cabs_logo.png)
 
-CODECbench is a video codec comparison tool. It allows you to analyze how one video codec performs against another, or with itself using different settings
+CODECbench is a video codec comparison tool. It allows you to analyze how one video codec performs against another, or with itself using different settings. It can also be used to produce [per-title optimized encodings](https://codecbench.nelalabs.com/per-title-optimization-in-codecbench). 
 
 You start by defining what is it you want to analyze. For example, let's compare how x265 performs with its different presets 'medium' and 'placebo'. For this we will create a JSON configuration like the following:
 
