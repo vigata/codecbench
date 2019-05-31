@@ -8,6 +8,7 @@ import subprocess
 import os
 import re
 import time
+import random
 
 
 def x264_handler(run):
@@ -28,6 +29,7 @@ def x264_handler(run):
             'den' : run['seq']['fpsden'],
             'bitrate' : run['config']['bitrate'],
             'preset' : run['config']['preset'] if 'preset' in run['config'] else 'slow',
+            'intres' : run['config']['intres'] if 'intres' in run['config'] else "",
             'muxedoutput' : run['output'] +".mp4",
             'output' : run['output']+".264",
             'input' : run['seq']['abspath'],
@@ -36,9 +38,11 @@ def x264_handler(run):
             'reconfile' : run['recon'],
             'vm' : run['tools']['vm'],
             'vgtmpeg' : run['tools']['vgtmpeg'],
+            'ffmpeg'  : run['tools']['ffmpeg'],
             'muxer' : run['tools']['mp4box'],
             'frame_count' : run['frame_count'],
-            'platform' : run['platform']
+            'platform' : run['platform'],
+            'metrics' : run['metrics'] if 'metrics' in run else ['psnr']
     }
     
     
@@ -46,14 +50,42 @@ def x264_handler(run):
     try:
         
         clines = []
-        
-        command = "{encoder} -v --fps={num}/{den} --bitrate={bitrate} --input-res {width}x{height} --preset {preset} -o {output} --frames {frame_count} {input}".format(**pars).split()
+
+        #if intres, internal resolution is specified, coding happens at this resolution. yet metric comparison is at original resolution
+        intres = None
+        intres_codec_input = ""
+        intres_codec_output = ""
+        if pars['intres']!='':
+            intres = pars['intres'].split('x')
+            pars['in_w'] = pars['width']
+            pars['in_h'] = pars['height']
+            pars['out_w'] = intres[0]
+            pars['out_h'] = intres[1]
+            intres_codec_yuv_input = "tmp/"+str(random.getrandbits(128))+'.yuv'
+            intres_codec_yuv_output= "tmp/"+str(random.getrandbits(128))+'.yuv'
+
+
+
+        #if intres create temp version of input at w x h of int res
+        if intres:
+            run['tools']['do_yuv_resize'](run, pars['input'], intres_codec_yuv_input ,clines, **pars)
+
+
+        encoder_yuv_input = pars['input'] if not intres  else os.path.abspath(intres_codec_yuv_input)
+        encode_width = pars['width']     if not intres  else pars['out_w']
+        encode_height= pars['height']    if not intres  else pars['out_h']
+
+        command = "{encoder} -v --fps={num}/{den} --bitrate={bitrate} --input-res {2}x{3} --preset {preset} -o {1} --frames {frame_count} {0}".format(encoder_yuv_input, pars['output'], encode_width, encode_height, **pars).split()
         clines.append(command)
         # do encode
         startenc = time.time()
         out = subprocess.check_output(command,stderr=subprocess.STDOUT).decode("utf-8")
         stopenc = time.time()
-        
+
+        # delete tmp file if using intres
+        if intres!=None:
+            os.remove(encoder_yuv_input)
+
         #sample last line
         #Pass 1/1 frame  300/300   136845B    3649b/f  109476b/s   23550 ms (12.74 fps)[K
         search = re.compile("(\d+)B\s+(\d+)b/f\s+(\d+)b/s", re.MULTILINE ).search(out)
@@ -70,7 +102,12 @@ def x264_handler(run):
         
         #do decode.
         if True:
-            command = "{vgtmpeg}  -i {output} -y -map 0 -pix_fmt yuv420p -vsync 0 {reconfile}".format(**pars).split();
+            # this path uses ffmpeg to do the h264 decode and upsampling if necessary
+            if not intres:
+                command = "{vgtmpeg}  -i {output} -y -map 0 -pix_fmt yuv420p -vsync 0 {reconfile}".format(**pars).split();
+            else:
+                command = "{ffmpeg}  -i {output} -y  -vf scale={width}:{height} -pix_fmt yuv420p -vsync 0 {reconfile}".format(**pars).split();
+
             clines.append(command)
             out = subprocess.check_output(command, stderr=subprocess.STDOUT)
         else:
@@ -101,7 +138,7 @@ codec = {
     "handler" : x264_handler,
     "version" : "",
     "version_long" : "",
-    "supported_pars" : {"bitrate":1000,"preset":"fast"},
+    "supported_pars" : {"bitrate":1000,"preset":"fast", "intres":"", "metrics":"psnr"},
     "ratesweep_pars" : ['bitrate']
 }
 

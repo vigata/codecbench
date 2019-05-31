@@ -2,13 +2,14 @@
     "sequence_dirs": ["../seq"],
     "codec_dirs" : ["../codecs"],
     "keeprecon" : false,
+    "metrics" : ["psnr"],
     "runs" : [
     {
         "seq" : ["foremancif"],
         "codec" : ["x264"],
         "bitrate" : [50,100],
-        "bitrate_range" : [50,1000,50],
-        "preset" : ["ultrafast","fast","medium"]
+        "bitrate_range" : [100,1000,100],
+        "preset" : ["fast"]
     }
     ],
     "reports" : {

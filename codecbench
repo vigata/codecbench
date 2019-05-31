@@ -26,9 +26,8 @@
 #  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 #  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 #  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-# 
-
-
+#
+import shutil
 import time
 import json
 import os
@@ -39,6 +38,7 @@ from optparse import OptionParser
 import sys
 import re
 import pickle
+import subprocess
 
 #a json encoder that ignores not recognized python types
 class PythonObjectEncoder(json.JSONEncoder):
@@ -74,11 +74,30 @@ class Sequence:
         return self.desc
     
 
+def do_yuv_resize(run, inp, out, clines=None, **pars):
+    parscopy = dict(pars)
+    parscopy['yuv_input'] = inp
+    parscopy['yuv_output'] = out
+    parscopy['ffmpeg'] = run['tools']['ffmpeg']
+    command = "{ffmpeg} -s:v {in_w}x{in_h} -r {num}/{den} -i {yuv_input} -vf scale={out_w}:{out_h} -c:v rawvideo -pix_fmt yuv420p {yuv_output}".format(**parscopy).split()
+    if clines!=None:
+        clines.append(command)
+
+    mout = subprocess.check_output(command, stderr=subprocess.STDOUT ).decode('utf-8')
+
+
 def do_video_metrics(clines=None,**pars):
-    import subprocess
-    
+    supported_metrics = ['psnr','ssim','ms_ssim']
+    metrics = pars['metrics']
+
+    #check metric is supported
+    for m in metrics:
+        if m not in supported_metrics:
+            print("{0} metric is not supported by video_metrics".format(m))
+            return
+
     #retrieve metrics
-    command = "{vm} -a {input} -b {reconfile} -m psnr,ssim -w {width} -h {height} -v -x {frame_count}".format(**pars).split()
+    command = "{vm} -a {input} -b {reconfile} -m {0}  -w {width} -h {height} -v -x {frame_count}".format(",".join(metrics), **pars).split()
     if clines:
         clines.append(command)
     mout = subprocess.check_output(command).decode('utf-8')
@@ -86,7 +105,7 @@ def do_video_metrics(clines=None,**pars):
     vmregex = lambda metric : "(\d+)\({0}\):\s(\S+)\s+Y:(\S+)\s+U:(\S+)\s+V:(\S+)".format(metric)
             
     frame_metrics = {}
-    for metric in ['psnr','ssim']:
+    for metric in metrics:
         matches = re.compile(vmregex(metric)).findall(mout)
         if(len(matches)!=pars['frame_count']):
             raise Exception("incorrect video metrics frame count for {0}".format(metric))
@@ -94,9 +113,11 @@ def do_video_metrics(clines=None,**pars):
         (f,g,y,u,v) = zip(*matches)
         frame_metrics[metric] = {'g': [float(val) for val in g], 'y': [float(val) for val in y], 'u': [float(val) for val in u], 'v': [float(val) for val in v] } 
             
-    psnr = re.compile("psnr: (.+)$", re.MULTILINE ).search(mout).group(1) 
-    ssim = re.compile("ssim: (.+)$", re.MULTILINE ).search(mout).group(1)
-    return {'psnr':float(psnr), 'ssim':float(ssim), 'frame_metrics':frame_metrics} 
+    
+    psnr = re.compile("psnr: (.+)$", re.MULTILINE ).search(mout).group(1) if 'psnr' in metrics else 0 
+    ssim = re.compile("ssim: (.+)$", re.MULTILINE ).search(mout).group(1) if 'ssim' in metrics else 0
+    ms_ssim = re.compile("ms_ssim: (.+)$", re.MULTILINE ).search(mout).group(1) if 'ms_ssim' in metrics else 0
+    return {'psnr':float(psnr), 'ssim':float(ssim), 'ms_ssim':float(ms_ssim), 'frame_metrics':frame_metrics}
 
     
 def file_todataurl(file):
@@ -121,7 +142,7 @@ def load_sequences(gconf):
     seqdict = gconf['seqs'] = {}
     """ does a run for codec with conf """
     for seqdir in seqdirs:
-        for root,dirs,files in os.walk(gconf['root']+os.sep+seqdir):
+        for root,dirs,files in os.walk(gconf['cwd']+os.sep+seqdir):
             for f in files:
                 if(f.endswith(".info") or f.endswith(".json")):
                     ff = os.path.abspath("{0}{1}{2}".format(root,os.sep,f))
@@ -144,7 +165,7 @@ def load_codecs(gconf):
     gconf['codec_modules'] = gconf.get('codec_modules',[])
     
     for codecdir in codecdirs:
-        for root,dirs,files in os.walk(gconf['root']+os.sep+codecdir):
+        for root,dirs,files in os.walk(gconf['cwd']+os.sep+codecdir):
             for f in files:
                 if(f=="codec.py"):
                     sys.path.insert(0,os.path.abspath(root))
@@ -188,16 +209,19 @@ def expand_runs(gconf, testconfig):
         native_root = "{root}{sep}tools{sep}native{sep}{platform}{sep}".format(**gconf)
         exe = '.exe' if gconf['platform'].startswith('windows') else ''
         
-        run['tools'] = {'vm': os.path.abspath(native_root+'video_metrics'+exe), \
-                'vgtmpeg' : os.path.abspath(native_root+'vgtmpeg'+exe), \
-                'mp4box' :  os.path.abspath(native_root+'MP4Box'+exe), \
-                'h265refdec' : os.path.abspath(native_root+'TAppDecoder'+exe), \
-                'do_video_metrics' : do_video_metrics }
+        run['tools'] = {'vm': os.path.abspath(native_root+'video_metrics'+exe),
+                'ffmpeg' : os.path.abspath(native_root+'ffmpeg'+exe),
+                'vgtmpeg' : os.path.abspath(native_root+'vgtmpeg'+exe),
+                'mp4box' :  os.path.abspath(native_root+'MP4Box'+exe),
+                'h265refdec' : os.path.abspath(native_root+'TAppDecoder'+exe),
+                'do_video_metrics' : do_video_metrics,
+                'do_yuv_resize': do_yuv_resize }
 
         if not os.path.isfile(run['tools']['vm']):
             print("can't find video metrics for this platform: "+ run['tools']['vm'])
             exit()
-        
+
+        run['metrics'] = testconfig['metrics'] if 'metrics' in testconfig else ['psnr']
         run['keeprecon'] = testconfig['keeprecon']
         run['frame_count'] = testconfig['frame_count'] if 'frame_count' in testconfig else 0
 
@@ -217,7 +241,7 @@ def expand_run(r, runs, gconf):
     if config.get('ignore', False):
         return
     
-    # check for bitarte range expansion
+    # check for bitrate range expansion
     if 'bitrate_range' in config:
         if len(config.get('bitrate_range',[]))!=3:
             print('ignoring bitrate range on config because there are not just 3 values. should be [start,stop,step]')
@@ -422,7 +446,7 @@ def reports_rdcurve_create_plot(seqplots, report, repopt ):
             seqplots[seq][plotid]['extrap_inv'] = extrapolate(y,x)
             
             #this assumes only one plot per seq
-            if(metric=='ssim'):
+            if metric=='ssim' or metric=="ms_ssim":
                 rdcurves[seq] = {}
                 rdcurves[seq]['rdfunc'] = rcfunc(x, y)
                 rdcurves[seq]['rdfuncinv'] = rcfunc(y, x)
@@ -784,14 +808,16 @@ machine_map = {'amd64':'x86_64'}
 
 def main(argv):
     gconf = {'root': os.path.abspath( os.path.dirname( __file__ )), 'sep' : os.sep, \
-            'platform': platform.system().lower()+"-"+ machine_map.get(platform.machine().lower(), platform.machine().lower()), \
-            'version' : '0.4.12', 'author' : 'Alberto Vigata', 'year': 2018}
+             'cwd': os.path.abspath(os.getcwd()), \
+             'platform': platform.system().lower()+"-"+ machine_map.get(platform.machine().lower(), platform.machine().lower()), \
+            'version' : '0.5.12', 'author' : 'Alberto Vigata', 'year': 2019}
     
 
     print("This is codecbench {version} [{author} {year}] starting up on {platform}".format(**gconf))
     parser = OptionParser()
-    parser.add_option("-i", "--input", dest="infile", help="the input configuration file")
+    parser.add_option("-i", "--input", dest="infile", help="the codec regression configuration file")
     parser.add_option("-r", "--report", dest="report", help="do reports")
+    parser.add_option("-x", "--clean", action="store_true", dest="clean", help="clean runs and reports")
     parser.add_option("-c", "--config", dest="config", default="codecbench.config", help="the main config file, defaults to 'codecbench.config'")
     parser.add_option("-v", "--verbose",action="store_true", dest="verbose",default=False )
     parser.add_option("--dump-codecs", action="store_true",   dest="dump_codecs",  help="Dumps codecpacks signatures")
@@ -805,19 +831,28 @@ def main(argv):
         pp.pprint(gconf)
     
     #load global config
-    with open( gconf['root'] + '/' + options.config,"r") as f:
+    with open( gconf['cwd'] + '/' + options.config,"r") as f:
         gconf['defaults'] = json.loads(remove_comments(f.read()))
         
     #load sequences and codec packs
     load_sequences(gconf)
     load_codecs(gconf)
-    
+
+    #delete runs and reports folder
+    if options.clean:
+        runpath = os.path.abspath( gconf['cwd'] + os.sep + 'runs' )
+        reppath = os.path.abspath( gconf['cwd'] + os.sep + 'reports' )
+        print('deleting runs at {0}'.format(runpath))
+        shutil.rmtree(runpath, ignore_errors=True)
+        print('deleting reports at {0}'.format(reppath))
+        shutil.rmtree(reppath, ignore_errors=True)
+
     if options.dump_codecs:
         print(objdump(gconf['codecs']))
         exit()
     
     if options.infile == None:
-        print("An runs configuration file must be specified with --input")
+        print("A runs configuration file must be specified with --input")
         exit()
     
 
