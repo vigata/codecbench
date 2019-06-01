@@ -915,6 +915,9 @@ def main(argv):
         
     gconf['tools'] = get_tools_paths(gconf)
 
+    tmpdir =    gconf['cwd']+os.sep+'tmp'
+    os.makedirs(tmpdir) if not os.path.exists(tmpdir) else None #create temp dir
+
     # import
     if options.importseq:
         importseq(gconf, options.importseq, options.nickname, options.framecount )
@@ -928,10 +931,12 @@ def main(argv):
     if options.clean:
         runpath = os.path.abspath( gconf['cwd'] + os.sep + 'runs' )
         reppath = os.path.abspath( gconf['cwd'] + os.sep + 'reports' )
+        tmppath = os.path.abspath( gconf['cwd'] + os.sep + 'tmp' )
         print('deleting runs at {0}'.format(runpath))
         shutil.rmtree(runpath, ignore_errors=True)
         print('deleting reports at {0}'.format(reppath))
         shutil.rmtree(reppath, ignore_errors=True)
+        shutil.rmtree(tmppath, ignore_errors=True)
 
     if options.dump_codecs:
         print(objdump(gconf['codecs']))
