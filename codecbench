@@ -193,7 +193,25 @@ def load_codecs(gconf):
                     
                     
                     
-                    
+#returns dict with abs paths to all the tools
+def get_tools_paths(gconf):
+    native_root = "{root}{sep}tools{sep}native{sep}{platform}{sep}".format(**gconf)
+    exe = '.exe' if gconf['platform'].startswith('windows') else ''
+    
+    ret = {'vm': os.path.abspath(native_root+'video_metrics'+exe),
+            'ffprobe' : os.path.abspath(native_root+'ffprobe'+exe),
+            'ffmpeg' : os.path.abspath(native_root+'ffmpeg'+exe),
+            'vgtmpeg' : os.path.abspath(native_root+'vgtmpeg'+exe),
+            'mp4box' :  os.path.abspath(native_root+'MP4Box'+exe),
+            'h265refdec' : os.path.abspath(native_root+'TAppDecoder'+exe),
+            'do_video_metrics' : do_video_metrics,
+            'do_yuv_resize': do_yuv_resize }
+
+    if not os.path.isfile(ret['vm']):
+        print("can't find video metrics for this platform: "+ run['tools']['vm'])
+        exit()
+    
+    return ret
         
 
 def expand_runs(gconf, testconfig):      
@@ -205,22 +223,7 @@ def expand_runs(gconf, testconfig):
     for rconfig in testconfig['runs']:
         run = {}
         run['config'] = rconfig 
-        
-        native_root = "{root}{sep}tools{sep}native{sep}{platform}{sep}".format(**gconf)
-        exe = '.exe' if gconf['platform'].startswith('windows') else ''
-        
-        run['tools'] = {'vm': os.path.abspath(native_root+'video_metrics'+exe),
-                'ffmpeg' : os.path.abspath(native_root+'ffmpeg'+exe),
-                'vgtmpeg' : os.path.abspath(native_root+'vgtmpeg'+exe),
-                'mp4box' :  os.path.abspath(native_root+'MP4Box'+exe),
-                'h265refdec' : os.path.abspath(native_root+'TAppDecoder'+exe),
-                'do_video_metrics' : do_video_metrics,
-                'do_yuv_resize': do_yuv_resize }
-
-        if not os.path.isfile(run['tools']['vm']):
-            print("can't find video metrics for this platform: "+ run['tools']['vm'])
-            exit()
-
+        run['tools'] = get_tools_paths(gconf)
         run['metrics'] = testconfig['metrics'] if 'metrics' in testconfig else ['psnr']
         run['keeprecon'] = testconfig['keeprecon']
         run['frame_count'] = testconfig['frame_count'] if 'frame_count' in testconfig else 0
@@ -806,6 +809,79 @@ def reports_generate(gconf,runconfig):
 
 machine_map = {'amd64':'x86_64'}
 
+
+# takes file and decodes it into yuv on the sequence folder
+def importseq(gconf, infile, nick=None, count=None):
+    if len(gconf['defaults']['sequence_dirs']) == 0:
+        print("there's no sequence dir defined in configuration file")
+        return
+
+
+    if not os.path.isfile(infile):
+        print("can't find input file {}\n".format(infile))
+        return
+
+    infile = os.path.abspath(infile)
+
+    # create imported folder inside sequences
+    seqfolder = os.path.abspath( gconf['cwd'] + os.sep + gconf['defaults']['sequence_dirs'][0] ) + os.sep + "imported"
+    os.makedirs(seqfolder) if not os.path.exists(seqfolder) else None
+    
+    # find media info for file using ffprobe
+    proc = subprocess.Popen([gconf['tools']['ffprobe'], '-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', infile], stdout=subprocess.PIPE)
+    out = proc.communicate()[0]
+    minfo = json.loads(out)
+    vst = None
+    # grab first video stream
+    vst = minfo['streams'][0] if len(minfo['streams'])>0 else None
+    if vst==None:
+        print("couldnt find video stream to import")
+        return
+    base = os.path.splitext(os.path.basename(infile))[0]
+
+    spars = {}
+    spars['format'] = '420P'
+    spars['width'] = vst['width']
+    spars['height'] = vst['height']
+    spars['fpsnum'] = vst['r_frame_rate'].split('/')[0]
+    spars['fpsden'] = vst['r_frame_rate'].split('/')[1]
+    spars['framesize'] = int( spars['width'] * spars['height'] * 1.5)  #yuv420 for now
+    spars['nickname'] = nick if nick!=None else base
+    spars['filename'] = base + '.yuv'
+    #framecount to be calculated after conversion
+
+    # yuv decode
+    yuvfile = os.path.abspath( seqfolder + os.sep + spars['filename']  )
+    yuvdesc = yuvfile + '.json'
+
+    # ffmpeg -i video.mp4 -c:v rawvideo -pix_fmt yuv420p out.yuv
+    print("importing {} into {}\n".format(infile, yuvfile))
+    proc = subprocess.Popen([gconf['tools']['ffmpeg'], '-i', infile, '-y', '-c:v:0', 'rawvideo', '-pix_fmt', 'yuv420p', yuvfile], stdout=subprocess.PIPE )
+    out = proc.communicate()[0]
+
+    # calculate number of frames 
+    filesize = os.path.getsize(yuvfile)
+    if filesize==0:
+        print('converted file has only 0 bytes\n')
+        return
+    spars['frame_count'] = int(filesize / spars['framesize'])
+
+    #write description json out
+    with open(yuvdesc, 'w') as outfile:
+        json.dump(spars, outfile)
+    print('wrote {} frames [{}x{}@{}/{}] into {}\n'.format(spars['frame_count'], spars['width'], spars['height'], spars['fpsnum'], spars['fpsden'], yuvfile))
+    return
+
+
+
+
+
+
+
+
+    
+
+
 def main(argv):
     gconf = {'root': os.path.abspath( os.path.dirname( __file__ )), 'sep' : os.sep, \
              'cwd': os.path.abspath(os.getcwd()), \
@@ -821,6 +897,9 @@ def main(argv):
     parser.add_option("-c", "--config", dest="config", default="codecbench.config", help="the main config file, defaults to 'codecbench.config'")
     parser.add_option("-v", "--verbose",action="store_true", dest="verbose",default=False )
     parser.add_option("--dump-codecs", action="store_true",   dest="dump_codecs",  help="Dumps codecpacks signatures")
+    parser.add_option("--import", dest="importseq", help="Imports a file and prepares as a sequence for testing in the sequences directory. Use --nickname option to specify seq nickname")
+    parser.add_option("--nickname", dest="nickname", help="Used in conjunction with --import to specify imported sequence nickname")
+    parser.add_option("--framecount", dest="framecount", help="When used with import imports this number of frames")
 
     (options, args) = parser.parse_args()
     
@@ -834,6 +913,13 @@ def main(argv):
     with open( gconf['cwd'] + '/' + options.config,"r") as f:
         gconf['defaults'] = json.loads(remove_comments(f.read()))
         
+    gconf['tools'] = get_tools_paths(gconf)
+
+    # import
+    if options.importseq:
+        importseq(gconf, options.importseq, options.nickname, options.framecount )
+        return
+
     #load sequences and codec packs
     load_sequences(gconf)
     load_codecs(gconf)
