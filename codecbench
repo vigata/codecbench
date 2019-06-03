@@ -887,6 +887,8 @@ def main(argv):
              'cwd': os.path.abspath(os.getcwd()), \
              'platform': platform.system().lower()+"-"+ machine_map.get(platform.machine().lower(), platform.machine().lower()), \
             'version' : '0.5.12', 'author' : 'Alberto Vigata', 'year': 2019}
+
+    print(gconf['root'])
     
 
     print("This is codecbench {version} [{author} {year}] starting up on {platform}".format(**gconf))
