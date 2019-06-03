@@ -198,18 +198,26 @@ def get_tools_paths(gconf):
     native_root = "{root}{sep}tools{sep}native{sep}{platform}{sep}".format(**gconf)
     exe = '.exe' if gconf['platform'].startswith('windows') else ''
     
+    # add tools exes
     ret = {'vm': os.path.abspath(native_root+'video_metrics'+exe),
             'ffprobe' : os.path.abspath(native_root+'ffprobe'+exe),
             'ffmpeg' : os.path.abspath(native_root+'ffmpeg'+exe),
             'vgtmpeg' : os.path.abspath(native_root+'vgtmpeg'+exe),
             'mp4box' :  os.path.abspath(native_root+'MP4Box'+exe),
-            'h265refdec' : os.path.abspath(native_root+'TAppDecoder'+exe),
-            'do_video_metrics' : do_video_metrics,
-            'do_yuv_resize': do_yuv_resize }
+            'h265refdec' : os.path.abspath(native_root+'TAppDecoder'+exe) 
+    }
 
-    if not os.path.isfile(ret['vm']):
-        print("can't find video metrics for this platform: "+ run['tools']['vm'])
-        exit()
+    # check tools are there
+    for tool in ret:
+        if not os.path.isfile(ret[tool]):
+            print("can't find {} for this platform: {}".format( tool,  ret[tool]))
+            exit()
+
+    # add handlers
+    ret.update ( {
+        'do_video_metrics' : do_video_metrics,
+        'do_yuv_resize': do_yuv_resize }
+    )
     
     return ret
         
@@ -883,13 +891,11 @@ def importseq(gconf, infile, nick=None, count=None):
 
 
 def main(argv):
-    gconf = {'root': os.path.abspath( os.path.dirname( __file__ )), 'sep' : os.sep, \
+    gconf = {'root': os.path.abspath( os.path.dirname( os.path.realpath(__file__) )), 'sep' : os.sep, \
              'cwd': os.path.abspath(os.getcwd()), \
              'platform': platform.system().lower()+"-"+ machine_map.get(platform.machine().lower(), platform.machine().lower()), \
             'version' : '0.5.12', 'author' : 'Alberto Vigata', 'year': 2019}
 
-    print(gconf['root'])
-    
 
     print("This is codecbench {version} [{author} {year}] starting up on {platform}".format(**gconf))
     parser = OptionParser()
