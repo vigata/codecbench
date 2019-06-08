@@ -79,7 +79,7 @@ def do_yuv_resize(run, inp, out, clines=None, **pars):
     parscopy['yuv_input'] = inp
     parscopy['yuv_output'] = out
     parscopy['ffmpeg'] = run['tools']['ffmpeg']
-    command = "{ffmpeg} -s:v {in_w}x{in_h} -r {num}/{den} -i {yuv_input} -vf scale={out_w}:{out_h} -c:v rawvideo -pix_fmt yuv420p {yuv_output}".format(**parscopy).split()
+    command = '{ffmpeg} -s:v {in_w}x{in_h} -r {num}/{den} -i {yuv_input} -vf scale={out_w}:{out_h} -c:v rawvideo -pix_fmt yuv420p {yuv_output}'.format(**parscopy).split()
     if clines!=None:
         clines.append(command)
 
@@ -90,7 +90,7 @@ def do_video_metrics(clines=None,**pars):
     supported_metrics = ['psnr','ssim','ms_ssim']
     metrics = pars['metrics']
 
-    #check metric is supported
+    # check metric is supported
     for m in metrics:
         if m not in supported_metrics:
             print("{0} metric is not supported by video_metrics".format(m))
@@ -127,7 +127,7 @@ def file_todataurl(file):
     if not ext in extmime:
         print("{0} is an unknown extension".format(ext))
         return ""
-    #read file
+    # read file
     with open(file, "rb") as f:
         data = f.read()
 
@@ -251,20 +251,26 @@ def expand_run(r, runs, gconf):
     
     if config.get('ignore', False):
         return
-    
-    # check for bitrate range expansion
-    if 'bitrate_range' in config:
-        if len(config.get('bitrate_range',[]))!=3:
-            print('ignoring bitrate range on config because there are not just 3 values. should be [start,stop,step]')
-        else:
-            a = [i for i in range(*config['bitrate_range'])]
-            print('expanded bitrate list to: ' + str(a) ) 
-            del config['bitrate_range']
-            config['bitrate'] = a
-            
+
+    # {key}_range is a special type that expands into {key} parameters as a range
+    # example. bitrate_range=[100,500,100] expands into
+    #  bitrate = [100,200,300,400]
+
+    # expand all '{key}_range' keys into '{key}'
+    for key in config:
+        m = re.match(r'(.+)_range', key)
+        if m is not None:
+            if len(config.get(key,[]))!=3:
+                print('ignoring {} on config because there are not just 3 values. should be [start,stop,step]'.format(key))
+            else:
+                a = [i for i in range(*config[key])]
+                print('expanded {} to: '.format(key) + str(a) )
+                del config[key]
+                config[m.group(1)] = a
+
     #for key in expand_keys:
     for key in config:
-        if(isinstance(config[key],list) and len(config[key])>1 ):
+        if isinstance(config[key], list) and len(config[key])>1:
             for item in config[key][:]:
                 config[key] = item
                 expand_run(run, runs, gconf)
@@ -274,7 +280,7 @@ def expand_run(r, runs, gconf):
     if(not expanded):
         #adapt those keys with single list items
         for key in config:
-            if(isinstance(config[key],list) and len(config[key])==1 ):
+            if isinstance(config[key],list) and len(config[key])==1 :
                 config[key] = config[key][0]
 
         #expand seq
@@ -316,7 +322,7 @@ def do_run(run, gconf,sem, index):
             name += "{0}_{1}__".format(e, run['config'][e])
         
         print("running {0} {1}/{2}".format(name, index, len(gconf['runs'])))
-        if( run['config'].get('ignore',False) ):
+        if run['config'].get('ignore', False):
             print("ignore flag is set. skipping ...")
             return
         
@@ -420,7 +426,7 @@ def report_find_x_from_y(plot,y):
     x = (y-k) / s
     return x
 
-def reports_rdcurve_create_plot(seqplots, report, repopt ):
+def reports_rdcurve_create_plot(seqplots, report, repopt, xnorm=1, xlabel="X" ):
     import matplotlib
     #matplotlib.use('svg')
 
@@ -457,7 +463,7 @@ def reports_rdcurve_create_plot(seqplots, report, repopt ):
             seqplots[seq][plotid]['extrap_inv'] = extrapolate(y,x)
             
             #this assumes only one plot per seq
-            if metric=='ssim' or metric=="ms_ssim":
+            if (metric=='ssim' or metric=="ms_ssim") and 'minqual' in report:
                 rdcurves[seq] = {}
                 rdcurves[seq]['rdfunc'] = rcfunc(x, y)
                 rdcurves[seq]['rdfuncinv'] = rcfunc(y, x)
@@ -465,10 +471,10 @@ def reports_rdcurve_create_plot(seqplots, report, repopt ):
                 rdcurves[seq]['h'] = seqplots[seq][plotid]['h'] 
             
 
-            x = [n/1000 for n in x]
+            x = [n/xnorm for n in x]
             line, = plt.plot(x,y, 'o-', label=plotid, linewidth=2)
             seqplots[seq][plotid]['line'] = line
-            plt.xlabel('kbps')
+            plt.xlabel(xlabel)
             plt.ylabel(metric.upper())
             plt.title(seqplots[seq][plotid]['title'])
 
@@ -703,6 +709,14 @@ def report_create_cabs(seqs, report, ref_plotid=None, repopt=None ):
     repopt['htmlout'] = "<h1>CABSscore info</h1><img src='{0}'/>".format(file_todataurl(imgfile))
 
 def report_create_ratedistortion(gconf, runs, report  ):
+    report_create(gconf, runs, report, 'bitrate', 'metric', xnorm=1000, xlabel='kbps')
+
+def report_create_XY(gconf, runs, report ):
+    report_create(gconf, runs, report, report['X'], report['Y'], xlabel=report['X'])
+
+
+
+def report_create(gconf, runs, report, xkey='bitrate', ykey='metric', xnorm=1, xlabel='kbps'):
     metric = report['metric']
     seqs = {}
     
@@ -710,7 +724,7 @@ def report_create_ratedistortion(gconf, runs, report  ):
     for run in runs:
         plotid = ''
         for key in sorted(run['config'].keys()):
-            plotid += "{0}:{1}_".format(key, run['config'][key]) if key!='bitrate' and key!='seq' and key not in gconf['runtime_ignore_keys'] else ""
+            plotid += "{0}:{1}_".format(key, run['config'][key]) if key!=xkey and key!='seq' and key not in gconf['runtime_ignore_keys'] else ""
         plotid = plotid[:-1]
         
         seqname = run['config']['seq']
@@ -721,7 +735,12 @@ def report_create_ratedistortion(gconf, runs, report  ):
         # make sure dics  and lists are created
         seqs[seqname] = {} if seqname not in seqs else seqs[seqname]
         seqs[seqname][plotid] = {'x':[], 'y':[]} if plotid not in seqs[seqname] else seqs[seqname][plotid]
-        seqs[seqname][plotid]['x'].append(run['results']['bps'])
+
+        if xkey=='bitrate': #special case for bitrate. we take the actual produced bitrate
+            seqs[seqname][plotid]['x'].append(run['results']['bps'])
+        else:
+            seqs[seqname][plotid]['x'].append(run['config'][xkey])
+
         seqs[seqname][plotid]['y'].append(run['results'][metric])
         seqs[seqname][plotid]['plotid'] = plotid
         seqs[seqname][plotid]['title'] = Sequence(run['seq']).plotstr() + " " + metric.upper()
@@ -740,7 +759,7 @@ def report_create_ratedistortion(gconf, runs, report  ):
     repopt = {'htmlout':"", 'reports_dir': reports_dir}
     html =""
     try:
-        rdret = reports_rdcurve_create_plot(seqs,report, repopt)
+        rdret = reports_rdcurve_create_plot(seqs,report, repopt, xnorm=xnorm, xlabel=xlabel)
         html += repopt['htmlout']
         
         repopt['htmlout'] = ""
@@ -812,8 +831,11 @@ def reports_generate(gconf,runconfig):
                 r['width'], r['height'] = int(re.findall('(\d+)x', r['res'])[0]), int(re.findall('x(\d+)', r['res'])[0])
         except:
             pass
-            
-        report_create_ratedistortion(gconf, gconf['runs'], r )
+
+        if 'type' in r and r['type']=='XY':
+            report_create_XY(gconf, gconf['runs'], r )
+        else:
+            report_create_ratedistortion(gconf, gconf['runs'], r )
 
 machine_map = {'amd64':'x86_64'}
 
@@ -894,7 +916,7 @@ def main(argv):
     gconf = {'root': os.path.abspath( os.path.dirname( os.path.realpath(__file__) )), 'sep' : os.sep, \
              'cwd': os.path.abspath(os.getcwd()), \
              'platform': platform.system().lower()+"-"+ machine_map.get(platform.machine().lower(), platform.machine().lower()), \
-            'version' : '0.5.12', 'author' : 'Alberto Vigata', 'year': 2019}
+            'version' : '0.5.17', 'author' : 'Alberto Vigata', 'year': 2019}
 
 
     print("This is codecbench {version} [{author} {year}] starting up on {platform}".format(**gconf))
@@ -918,9 +940,14 @@ def main(argv):
         pp.pprint(gconf)
     
     #load global config
-    with open( gconf['cwd'] + '/' + options.config,"r") as f:
-        gconf['defaults'] = json.loads(remove_comments(f.read()))
-        
+    configfile = gconf['cwd']+os.sep+ options.config
+    if os.path.exists(configfile):
+        with open( configfile,"r") as f:
+            gconf['defaults'] = json.loads(remove_comments(f.read()))
+    else:
+        gconf['defaults'] = { 'sequence_dirs' : ['sequences'], 'codec_dirs' : 'codecpacks'}
+
+
     gconf['tools'] = get_tools_paths(gconf)
 
     tmpdir =    gconf['cwd']+os.sep+'tmp'
