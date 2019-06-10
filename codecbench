@@ -840,8 +840,8 @@ def reports_generate(gconf,runconfig):
 machine_map = {'amd64':'x86_64'}
 
 
-# takes file and decodes it into yuv on the sequence folder
-def importseq(gconf, infile, nick=None, count=None):
+# takes file and decodes it into yuv on the sequence folder. Rescales content if necessary
+def importseq(gconf, infile, nick=None, count=None, rescale=None):
     if len(gconf['defaults']['sequence_dirs']) == 0:
         print("there's no sequence dir defined in configuration file")
         return
@@ -869,10 +869,14 @@ def importseq(gconf, infile, nick=None, count=None):
         return
     base = os.path.splitext(os.path.basename(infile))[0]
 
+    rescale = None if len(rescale.split('x'))!=2 else rescale
+    if rescale:
+        base += "__{}_{}".format(rescale.split('x')[0], rescale.split('x')[1])
+  
     spars = {}
     spars['format'] = '420P'
-    spars['width'] = vst['width']
-    spars['height'] = vst['height']
+    spars['width'] = vst['width'] if rescale is None else int(rescale.split('x')[0])
+    spars['height'] = vst['height'] if rescale is None else int(rescale.split('x')[1])
     spars['fpsnum'] = vst['r_frame_rate'].split('/')[0]
     spars['fpsden'] = vst['r_frame_rate'].split('/')[1]
     spars['framesize'] = int( spars['width'] * spars['height'] * 1.5)  #yuv420 for now
@@ -886,7 +890,23 @@ def importseq(gconf, infile, nick=None, count=None):
 
     # ffmpeg -i video.mp4 -c:v rawvideo -pix_fmt yuv420p out.yuv
     print("importing {} into {}\n".format(infile, yuvfile))
-    proc = subprocess.Popen([gconf['tools']['ffmpeg'], '-i', infile, '-y', '-c:v:0', 'rawvideo', '-pix_fmt', 'yuv420p', yuvfile], stdout=subprocess.PIPE )
+
+    cmd = []
+    cmd.append( gconf['tools']['ffmpeg'] )
+    cmd.append( '-i' )
+    cmd.append( infile )
+    cmd.append( '-y' )
+    cmd.append(  '-c:v:0' )
+    cmd.append( 'rawvideo' )
+    cmd.append( '-pix_fmt' )
+    cmd.append( 'yuv420p' )
+    if rescale is not None:
+        cmd.append( '-vf' )
+        cmd.append( 'scale={}:{}'.format( spars['width'], spars['height'] ))
+
+    cmd.append( yuvfile )
+
+    proc = subprocess.Popen( cmd, stdout=subprocess.PIPE )
     out = proc.communicate()[0]
 
     # calculate number of frames 
@@ -928,6 +948,7 @@ def main(argv):
     parser.add_option("-v", "--verbose",action="store_true", dest="verbose",default=False )
     parser.add_option("--dump-codecs", action="store_true",   dest="dump_codecs",  help="Dumps codecpacks signatures")
     parser.add_option("--import", dest="importseq", help="Imports a file and prepares as a sequence for testing in the sequences directory. Use --nickname option to specify seq nickname")
+    parser.add_option("--rescale", dest="rescale", help="Rescales seq during import")
     parser.add_option("--nickname", dest="nickname", help="Used in conjunction with --import to specify imported sequence nickname")
     parser.add_option("--framecount", dest="framecount", help="When used with import imports this number of frames")
 
@@ -955,7 +976,7 @@ def main(argv):
 
     # import
     if options.importseq:
-        importseq(gconf, options.importseq, options.nickname, options.framecount )
+        importseq(gconf, options.importseq, options.nickname, options.framecount, rescale=options.rescale )
         return
 
     #load sequences and codec packs
